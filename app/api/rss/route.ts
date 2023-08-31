@@ -37,7 +37,7 @@ const fetchRSSURL = async (url: string) => {
       mode: "no-cors",
       cache: "no-store",
     }).then((response) => response.json());
-    console.log(res.feeds, "kkkk");
+
     return res.feeds?.[0].subscribe_URL;
   } catch (e) {
     console.log(e, "error occurs when fetching rss url");
@@ -53,7 +53,6 @@ const rssToJson = async (rssURL: string) => {
       mode: "no-cors",
       cache: "no-store",
     }).then((response) => response.json());
-    console.log("json:", res);
     return res;
   } catch (e) {
     console.log(e, "error occurs when convert rss to json");
@@ -92,7 +91,7 @@ export async function GET(request: Request) {
   const limit =
     Number(searchParams.get("limit")) > 10
       ? 10
-      : Number(searchParams.get("limit"));
+      : Number(searchParams.get("limit")) || 10;
   if (!query)
     return errorHandle({
       error: ErrorMessages.emptyQuery,
@@ -118,7 +117,6 @@ export async function GET(request: Request) {
       code: 404,
       query,
     });
-  console.log(rssURL, "rssURL");
   const rssJSON = await rssToJson(rssURL);
   if (!rssJSON)
     return errorHandle({
@@ -129,18 +127,20 @@ export async function GET(request: Request) {
 
   try {
     // limit
-    rssJSON?.items.slice(0, limit - 1);
+    const responseBody = {
+      ...rssJSON,
+      items: rssJSON?.items.slice(0, limit),
+    };
     // mode && refactor
-    rssJSON?.items.map((x: ArticleItem) => {
+    responseBody?.items.map((x: ArticleItem) => {
       delete x.content_encoded;
       delete x.url;
       if (mode === "list") {
         delete x.content;
       }
-      return x;
     });
 
-    return NextResponse.json(rssJSON);
+    return NextResponse.json(responseBody);
   } catch (e) {
     return errorHandle({
       error: (e as { message: string }).message,
