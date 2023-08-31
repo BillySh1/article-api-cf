@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-
+import axios from 'axios'
 export const runtime = "edge";
 
 enum ErrorMessages {
@@ -23,7 +23,7 @@ const fetchRSSURL = async (url: string) => {
       "https://public-api.wordpress.com/rest/v1.1/read/feed/?url=" + url;
     const res = await fetch(fetchURL, {
       mode: "no-cors",
-      credentials: "include",
+      cache: "no-store",
     }).then((response) => response.json());
     return res.feeds?.[0].subscribe_URL;
   } catch (e) {
@@ -33,15 +33,17 @@ const fetchRSSURL = async (url: string) => {
 };
 
 const rssToJson = async (rssURL: string) => {
+  // const rss = await parse(rssURL).then((r) => {
+  //   console.log(r, "kkk");
+  // });
   try {
     const fetchURL =
       "https://rss-to-json-serverless-api.vercel.app/api?feedURL=" + rssURL;
-    const res = await fetch(fetchURL, {
-      mode: "no-cors",
-      credentials: "include",
-    }).then((response) => response.json());
+    console.log(fetchURL, "kkk");
 
-    console.log("json:", res);
+    const res = await axios.get(fetchURL)
+
+    console.log("json:", res.data);
     return res;
   } catch (e) {
     console.log(e, "error");
@@ -61,7 +63,6 @@ const errorHandle = (props: ErrorResponseInterface) => {
   return new Response(
     JSON.stringify({
       query: props.query,
-
       error: props.error,
     }),
     {
