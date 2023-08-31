@@ -128,11 +128,10 @@ export async function GET(request: Request) {
     });
 
   try {
-    const resOBJ = JSON.parse(rssJSON)
     // limit
-    resOBJ?.items.slice(0, limit - 1);
+    rssJSON?.items.slice(0, limit - 1);
     // mode && refactor
-    resOBJ?.items.map((x: ArticleItem) => {
+    rssJSON?.items.map((x: ArticleItem) => {
       delete x.content_encoded;
       delete x.url;
       if (mode === "list") {
@@ -141,7 +140,7 @@ export async function GET(request: Request) {
       return x;
     });
 
-    return NextResponse.json(JSON.stringify(resOBJ));
+    return NextResponse.json(rssJSON);
   } catch (e) {
     return errorHandle({
       error: (e as { message: string }).message,
