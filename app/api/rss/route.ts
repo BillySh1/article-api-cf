@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import axios from 'axios'
+import axios from "axios";
 export const runtime = "edge";
 
 enum ErrorMessages {
@@ -33,15 +33,11 @@ const fetchRSSURL = async (url: string) => {
 };
 
 const rssToJson = async (rssURL: string) => {
-  // const rss = await parse(rssURL).then((r) => {
-  //   console.log(r, "kkk");
-  // });
   try {
     const fetchURL =
       "https://rss-to-json-serverless-api.vercel.app/api?feedURL=" + rssURL;
-    console.log(fetchURL, "kkk");
 
-    const res = await axios.get(fetchURL)
+    const res = await axios.get(fetchURL);
 
     console.log("json:", res.data);
     return res;
