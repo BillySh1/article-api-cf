@@ -1,1 +1,1 @@
-Convert RSS URL to JSON format
+Convert ENS Domain's RSS & RSS URL to JSON format

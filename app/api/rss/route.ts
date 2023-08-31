@@ -6,7 +6,18 @@ enum ErrorMessages {
   emptyQuery = "Empty Query",
   invalidQuery = "Invalid Query",
 }
-
+interface ArticleItem {
+  category: string[];
+  created: number;
+  description: string;
+  enclosures: string[];
+  link: string;
+  published: number;
+  title: string;
+  content?: string;
+  content_encoded?: string;
+  url?: string;
+}
 interface ErrorResponseInterface {
   query: string;
   error: string;
@@ -15,6 +26,8 @@ interface ErrorResponseInterface {
 }
 
 const regexEns = /.*\.(eth|xyz|app|luxe|kred|art|ceo|club)$/i;
+const regexDOmain =
+  /(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]/g;
 
 const fetchRSSURL = async (url: string) => {
   try {
@@ -72,20 +85,29 @@ const errorHandle = (props: ErrorResponseInterface) => {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const query = searchParams.get("query");
+  const mode = searchParams.get("mode") || "full";
+  const limit =
+    Number(searchParams.get("limit")) > 10
+      ? 10
+      : Number(searchParams.get("limit"));
   if (!query)
     return errorHandle({
       error: ErrorMessages.emptyQuery,
       code: 404,
       query: "",
     });
-  if (!isValidURL(query) && !regexEns.test(query)) {
+  if (query.includes("https") && !isValidURL(query) && !regexEns.test(query)) {
     return errorHandle({
       error: ErrorMessages.invalidQuery,
       code: 404,
       query,
     });
   }
-  const fetchURL = regexEns.test(query) ? query + ".limo" : query;
+  const fetchURL = regexEns.test(query)
+    ? query + ".limo"
+    : regexDOmain.test(query)
+    ? "https://" + query
+    : query;
   const rssURL = await fetchRSSURL(fetchURL);
   if (!rssURL)
     return errorHandle({
@@ -94,7 +116,26 @@ export async function GET(request: Request) {
       query,
     });
   const rssJSON = await rssToJson(rssURL);
+  if (!rssJSON)
+    return errorHandle({
+      error: ErrorMessages.notFound,
+      code: 404,
+      query,
+    });
+
   try {
+    // limit
+    rssJSON?.items.slice(0, limit - 1);
+    // mode && refactor
+    rssJSON?.items.map((x: ArticleItem) => {
+      delete x.content_encoded;
+      delete x.url;
+      if (mode === "list") {
+        delete x.content;
+      }
+      return x;
+    });
+
     return NextResponse.json(rssJSON);
   } catch (e) {
     return errorHandle({
