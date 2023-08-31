@@ -141,7 +141,7 @@ export async function GET(request: Request) {
       return x;
     });
 
-    return NextResponse.json(resOBJ);
+    return NextResponse.json(JSON.stringify(resOBJ));
   } catch (e) {
     return errorHandle({
       error: (e as { message: string }).message,
