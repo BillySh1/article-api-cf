@@ -37,6 +37,7 @@ const fetchRSSURL = async (url: string) => {
       mode: "no-cors",
       cache: "no-store",
     }).then((response) => response.json());
+    console.log(res.feeds, "kkkk");
     return res.feeds?.[0].subscribe_URL;
   } catch (e) {
     console.log(e, "error occurs when fetching rss url");
@@ -48,8 +49,10 @@ const rssToJson = async (rssURL: string) => {
   try {
     const fetchURL =
       "https://rss-to-json-serverless-api.vercel.app/api?feedURL=" + rssURL;
-    console.log(fetchURL, "kkk");
-    const res = await fetch(fetchURL).then((response) => response.json());
+    const res = await fetch(fetchURL, {
+      mode: "no-cors",
+      cache: "no-store",
+    }).then((response) => response.json());
     console.log("json:", res);
     return res;
   } catch (e) {
@@ -115,6 +118,7 @@ export async function GET(request: Request) {
       code: 404,
       query,
     });
+  console.log(rssURL, "rssURL");
   const rssJSON = await rssToJson(rssURL);
   if (!rssJSON)
     return errorHandle({
@@ -124,10 +128,11 @@ export async function GET(request: Request) {
     });
 
   try {
+    const resOBJ = JSON.parse(rssJSON)
     // limit
-    rssJSON?.items.slice(0, limit - 1);
+    resOBJ?.items.slice(0, limit - 1);
     // mode && refactor
-    rssJSON?.items.map((x: ArticleItem) => {
+    resOBJ?.items.map((x: ArticleItem) => {
       delete x.content_encoded;
       delete x.url;
       if (mode === "list") {
@@ -136,7 +141,7 @@ export async function GET(request: Request) {
       return x;
     });
 
-    return NextResponse.json(rssJSON);
+    return NextResponse.json(resOBJ);
   } catch (e) {
     return errorHandle({
       error: (e as { message: string }).message,
