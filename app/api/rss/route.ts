@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import striptags from "striptags";
 export const runtime = "edge";
 
 enum ErrorMessages {
@@ -9,7 +10,6 @@ enum ErrorMessages {
 interface ArticleItem {
   category: string[];
   created: number;
-  description: string;
   enclosures: string[];
   link: string;
   published: number;
@@ -17,6 +17,7 @@ interface ArticleItem {
   content?: string;
   content_encoded?: string;
   url?: string;
+  description?: string
 }
 interface ErrorResponseInterface {
   query: string;
@@ -138,6 +139,10 @@ export async function GET(request: Request) {
       if (mode === "list") {
         delete x.content;
       }
+      x.description =
+        typeof x.description === "string"
+          ? striptags(x.description || "") || ""
+          : "";
     });
 
     return NextResponse.json(responseBody);
