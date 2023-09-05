@@ -1,6 +1,16 @@
+import { sliceString } from "@/utils/string";
 import { NextResponse } from "next/server";
 import striptags from "striptags";
 export const runtime = "edge";
+
+const escapeRegex = /[\\/\b\f\n\r\t\v]/g;
+
+const resolveInnerHTML = (content: string | undefined) => {
+  return typeof content === "string"
+    ? sliceString(striptags(content || "").replaceAll(escapeRegex, ""), 140) ||
+        ""
+    : "";
+};
 
 enum ErrorMessages {
   notFound = "Not Found",
@@ -17,7 +27,7 @@ interface ArticleItem {
   content?: string;
   content_encoded?: string;
   url?: string;
-  description?: string
+  description?: string;
 }
 interface ErrorResponseInterface {
   query: string;
@@ -130,6 +140,7 @@ export async function GET(request: Request) {
     // limit
     const responseBody = {
       ...rssJSON,
+      description: resolveInnerHTML(rssJSON.description ?? ""),
       items: rssJSON?.items.slice(0, limit),
     };
     // mode && refactor
@@ -139,10 +150,7 @@ export async function GET(request: Request) {
       if (mode === "list") {
         delete x.content;
       }
-      x.description =
-        typeof x.description === "string"
-          ? striptags(x.description || "") || ""
-          : "";
+      x.description = resolveInnerHTML(x.description);
     });
 
     return NextResponse.json(responseBody);
