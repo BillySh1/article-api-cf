@@ -37,7 +37,7 @@ interface ErrorResponseInterface {
 }
 
 const regexEns = /.*\.(eth|xyz|app|luxe|kred|art|ceo|club)$/i;
-const regexDOmain =
+const regexDomain =
   /(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]/g;
 
 const fetchRSSURL = async (url: string) => {
@@ -118,7 +118,7 @@ export async function GET(request: Request) {
   }
   const fetchURL = regexEns.test(query)
     ? query + ".limo"
-    : regexDOmain.test(query)
+    : regexDomain.test(query)
     ? "https://" + query
     : query;
   const rssURL = await fetchRSSURL(fetchURL);
