@@ -1,5 +1,16 @@
+import { sliceString } from "@/utils/string";
 import { NextResponse } from "next/server";
+import striptags from "striptags";
 export const runtime = "edge";
+
+const escapeRegex = /[\\/\b\f\n\r\t\v]/g;
+
+const resolveInnerHTML = (content: string | undefined) => {
+  return typeof content === "string"
+    ? sliceString(striptags(content || "").replaceAll(escapeRegex, ""), 140) ||
+        ""
+    : "";
+};
 
 enum ErrorMessages {
   notFound = "Not Found",
@@ -9,7 +20,6 @@ enum ErrorMessages {
 interface ArticleItem {
   category: string[];
   created: number;
-  description: string;
   enclosures: string[];
   link: string;
   published: number;
@@ -17,6 +27,7 @@ interface ArticleItem {
   content?: string;
   content_encoded?: string;
   url?: string;
+  description?: string;
 }
 interface ErrorResponseInterface {
   query: string;
@@ -26,7 +37,7 @@ interface ErrorResponseInterface {
 }
 
 const regexEns = /.*\.(eth|xyz|app|luxe|kred|art|ceo|club)$/i;
-const regexDOmain =
+const regexDomain =
   /(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]/g;
 
 const fetchRSSURL = async (url: string) => {
@@ -107,7 +118,7 @@ export async function GET(request: Request) {
   }
   const fetchURL = regexEns.test(query)
     ? query + ".limo"
-    : regexDOmain.test(query)
+    : regexDomain.test(query)
     ? "https://" + query
     : query;
   const rssURL = await fetchRSSURL(fetchURL);
@@ -129,6 +140,8 @@ export async function GET(request: Request) {
     // limit
     const responseBody = {
       ...rssJSON,
+      title: resolveInnerHTML(rssJSON.title ?? ""),
+      description: resolveInnerHTML(rssJSON.description ?? ""),
       items: rssJSON?.items.slice(0, limit),
     };
     // mode && refactor
@@ -138,6 +151,8 @@ export async function GET(request: Request) {
       if (mode === "list") {
         delete x.content;
       }
+      x.description = resolveInnerHTML(x.description);
+      x.title = resolveInnerHTML(x.title)
     });
 
     return NextResponse.json(responseBody);
