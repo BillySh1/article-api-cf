@@ -140,6 +140,7 @@ export async function GET(request: Request) {
     // limit
     const responseBody = {
       ...rssJSON,
+      title: resolveInnerHTML(rssJSON.title ?? ""),
       description: resolveInnerHTML(rssJSON.description ?? ""),
       items: rssJSON?.items.slice(0, limit),
     };
@@ -151,6 +152,7 @@ export async function GET(request: Request) {
         delete x.content;
       }
       x.description = resolveInnerHTML(x.description);
+      x.title = resolveInnerHTML(x.title)
     });
 
     return NextResponse.json(responseBody);
