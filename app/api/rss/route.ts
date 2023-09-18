@@ -36,9 +36,10 @@ interface ErrorResponseInterface {
   headers?: HeadersInit;
 }
 
-const regexEns = /.*\.(eth|xyz|app|luxe|kred|art|ceo|club)$/i;
-const regexDomain =
-  /(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]/g;
+const regexEns = /.*\.(eth|xyz|app|luxe|kred|art|ceo|club)$/i,
+  regexDotbit = /.*\.bit$/i,
+  regexDomain =
+    /(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]/g;
 
 const fetchRSSURL = async (url: string) => {
   try {
@@ -48,8 +49,10 @@ const fetchRSSURL = async (url: string) => {
       mode: "no-cors",
       cache: "no-store",
     }).then((response) => response.json());
-
+    if(res){
     return res.feeds?.[0].subscribe_URL;
+
+    } 
   } catch (e) {
     console.log(e, "error occurs when fetching rss url");
     return null;
@@ -109,18 +112,31 @@ export async function GET(request: Request) {
       code: 404,
       query: "",
     });
-  if (query.includes("https") && !isValidURL(query) && !regexEns.test(query)) {
+  if (
+    query.includes("https") &&
+    !isValidURL(query) &&
+    !regexEns.test(query) &&
+    !regexDotbit.test(query)
+  ) {
     return errorHandle({
       error: ErrorMessages.invalidQuery,
       code: 404,
       query,
     });
   }
-  const fetchURL = regexEns.test(query)
-    ? query + ".limo"
-    : regexDomain.test(query)
-    ? "https://" + query
-    : query;
+  const fetchURL = (() => {
+    switch (!!query) {
+      case regexEns.test(query):
+        return query + ".limo";
+      case regexDotbit.test(query):
+        return query + ".cc";
+      case regexDomain.test(query):
+        return "https://" + query;
+      default:
+        return query;
+    }
+  })();
+
   const rssURL = await fetchRSSURL(fetchURL);
   if (!rssURL)
     return errorHandle({
@@ -152,7 +168,7 @@ export async function GET(request: Request) {
         delete x.content;
       }
       x.description = resolveInnerHTML(x.description);
-      x.title = resolveInnerHTML(x.title)
+      x.title = resolveInnerHTML(x.title);
     });
 
     return NextResponse.json(responseBody);
