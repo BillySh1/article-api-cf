@@ -49,10 +49,7 @@ const fetchRSSURL = async (url: string) => {
       mode: "no-cors",
       cache: "no-store",
     }).then((response) => response.json());
-    if(res){
     return res.feeds?.[0].subscribe_URL;
-
-    } 
   } catch (e) {
     console.log(e, "error occurs when fetching rss url");
     return null;
