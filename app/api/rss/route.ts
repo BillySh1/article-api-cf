@@ -59,7 +59,7 @@ const fetchRSSURL = async (url: string) => {
 const rssToJson = async (rssURL: string) => {
   try {
     const fetchURL =
-      "https://rss-to-json-serverless-api.vercel.app/api?feedURL=" + rssURL;
+      "https://www.toptal.com/developers/feed2json/convert?url=" + rssURL;
     const res = await fetch(fetchURL, {
       mode: "no-cors",
       cache: "no-store",
