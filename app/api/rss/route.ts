@@ -1,4 +1,5 @@
 import { sliceString } from "@/utils/string";
+import { NextResponse } from "next/server";
 import striptags from "striptags";
 export const runtime = "edge";
 
@@ -167,7 +168,14 @@ export async function GET(request: Request) {
       x.title = resolveInnerHTML(x.title);
     });
 
-    return respondWithCache(responseBody);
+    return NextResponse.json(responseBody, {
+      status: 200,
+      headers: {
+        "Cache-Control": `public, s-maxage=${
+          60 * 60 * 24
+        }, stale-while-revalidate=${60 * 30}`,
+      },
+    });
   } catch (e) {
     return errorHandle({
       error: (e as { message: string }).message,
@@ -176,14 +184,3 @@ export async function GET(request: Request) {
     });
   }
 }
-
-export const respondWithCache = (json: string) => {
-  return new Response(json, {
-    status: 200,
-    headers: {
-      "Cache-Control": `public, s-maxage=${
-        60 * 60 * 24
-      }, stale-while-revalidate=${60 * 30}`,
-    },
-  });
-};
