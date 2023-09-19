@@ -128,7 +128,9 @@ export async function GET(request: Request) {
       case regexDotbit.test(query):
         return query + ".cc";
       case regexDomain.test(query):
-        return "https://" + query;
+        return query.startsWith("https://") || query.startsWith("http://")
+          ? query
+          : "https://" + query;
       default:
         return query;
     }
@@ -155,7 +157,7 @@ export async function GET(request: Request) {
       ...rssJSON,
       title: resolveInnerHTML(rssJSON.title ?? ""),
       description: resolveInnerHTML(rssJSON.description ?? ""),
-      items: rssJSON?.items.slice(0, limit),
+      items: rssJSON?.items?.slice(0, limit),
     };
     // mode && refactor
     responseBody?.items.map((x: ArticleItem) => {
