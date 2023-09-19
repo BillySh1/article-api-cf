@@ -28,6 +28,8 @@ interface ArticleItem {
   content_encoded?: string;
   url?: string;
   description?: string;
+  content_html?: string;
+  summary?: string;
 }
 interface ErrorResponseInterface {
   query: string;
@@ -45,10 +47,7 @@ const fetchRSSURL = async (url: string) => {
   try {
     const fetchURL =
       "https://public-api.wordpress.com/rest/v1.1/read/feed/?url=" + url;
-    const res = await fetch(fetchURL, {
-      mode: "no-cors",
-      cache: "no-store",
-    }).then((response) => response.json());
+    const res = await fetch(fetchURL).then((response) => response.json());
     return res.feeds?.[0].subscribe_URL;
   } catch (e) {
     console.log(e, "error occurs when fetching rss url");
@@ -60,10 +59,7 @@ const rssToJson = async (rssURL: string) => {
   try {
     const fetchURL =
       "https://www.toptal.com/developers/feed2json/convert?url=" + rssURL;
-    const res = await fetch(fetchURL, {
-      mode: "no-cors",
-      cache: "no-store",
-    }).then((response) => response.json());
+    const res = await fetch(fetchURL).then((response) => response.json());
     return res;
   } catch (e) {
     console.log(e, "error occurs when convert rss to json");
@@ -165,9 +161,11 @@ export async function GET(request: Request) {
       delete x.url;
       if (mode === "list") {
         delete x.content;
+        delete x.content_html;
       }
       x.description = resolveInnerHTML(x.description);
       x.title = resolveInnerHTML(x.title);
+      x.summary = resolveInnerHTML(x.summary);
     });
 
     return NextResponse.json(responseBody, {
