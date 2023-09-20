@@ -21,13 +21,14 @@ enum ErrorMessages {
 interface ArticleItem {
   category: string[];
   created: number;
-  enclosures: string[];
+  enclosures?: string[];
   link: string;
   published: number;
   title: string;
   content?: string;
   content_encoded?: string;
   url?: string;
+  guid?: string;
   description?: string;
   content_html?: string;
   summary?: string;
@@ -59,7 +60,7 @@ const fetchRSSURL = async (url: string) => {
 const rssToJson = async (rssURL: string) => {
   try {
     const fetchURL =
-      "https://www.toptal.com/developers/feed2json/convert?url=" + rssURL;
+      "https://rss-to-json-serverless-api.vercel.app/api?feedURL=" + rssURL;
     const res = await fetch(fetchURL).then((response) => response.json());
     return res;
   } catch (e) {
@@ -159,10 +160,12 @@ export async function GET(request: Request) {
     // mode && refactor
     responseBody?.items.map((x: ArticleItem) => {
       delete x.content_encoded;
+      delete x.guid;
       delete x.url;
       if (mode === "list") {
         delete x.content;
         delete x.content_html;
+        delete x.enclosures;
       }
       if (x.description || x.summary)
         x.description = resolveInnerHTML(x.description || x.summary);
