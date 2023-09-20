@@ -7,8 +7,9 @@ const escapeRegex = /[\\/\b\f\n\r\t\v]/g;
 
 const resolveInnerHTML = (content: string | undefined) => {
   return typeof content === "string"
-    ? sliceString(striptags(content || "").replaceAll(escapeRegex, ""), 140) ||
-        ""
+    ? sliceString(striptags(content || "").replaceAll(escapeRegex, ""), 140)
+        .trim()
+        .replace(/\s{2,}/g, " ") || ""
     : "";
 };
 
@@ -20,14 +21,17 @@ enum ErrorMessages {
 interface ArticleItem {
   category: string[];
   created: number;
-  enclosures: string[];
+  enclosures?: string[];
   link: string;
   published: number;
   title: string;
   content?: string;
   content_encoded?: string;
   url?: string;
+  guid?: string;
   description?: string;
+  content_html?: string;
+  summary?: string;
 }
 interface ErrorResponseInterface {
   query: string;
@@ -36,19 +40,16 @@ interface ErrorResponseInterface {
   headers?: HeadersInit;
 }
 
-const regexEns = /.*\.(eth|xyz|app|luxe|kred|art|ceo|club)$/i;
-const regexDomain =
-  /(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]/g;
+const regexEns = /.*\.(eth|xyz|app|luxe|kred|art|ceo|club)$/i,
+  regexDotbit = /.*\.bit$/i,
+  regexDomain =
+    /(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]/g;
 
 const fetchRSSURL = async (url: string) => {
   try {
     const fetchURL =
       "https://public-api.wordpress.com/rest/v1.1/read/feed/?url=" + url;
-    const res = await fetch(fetchURL, {
-      mode: "no-cors",
-      cache: "no-store",
-    }).then((response) => response.json());
-
+    const res = await fetch(fetchURL).then((response) => response.json());
     return res.feeds?.[0].subscribe_URL;
   } catch (e) {
     console.log(e, "error occurs when fetching rss url");
@@ -60,10 +61,7 @@ const rssToJson = async (rssURL: string) => {
   try {
     const fetchURL =
       "https://rss-to-json-serverless-api.vercel.app/api?feedURL=" + rssURL;
-    const res = await fetch(fetchURL, {
-      mode: "no-cors",
-      cache: "no-store",
-    }).then((response) => response.json());
+    const res = await fetch(fetchURL).then((response) => response.json());
     return res;
   } catch (e) {
     console.log(e, "error occurs when convert rss to json");
@@ -109,18 +107,33 @@ export async function GET(request: Request) {
       code: 404,
       query: "",
     });
-  if (query.includes("https") && !isValidURL(query) && !regexEns.test(query)) {
+  if (
+    query.includes("https") &&
+    !isValidURL(query) &&
+    !regexEns.test(query) &&
+    !regexDotbit.test(query)
+  ) {
     return errorHandle({
       error: ErrorMessages.invalidQuery,
       code: 404,
       query,
     });
   }
-  const fetchURL = regexEns.test(query)
-    ? query + ".limo"
-    : regexDomain.test(query)
-    ? "https://" + query
-    : query;
+  const fetchURL = (() => {
+    switch (!!query) {
+      case regexEns.test(query):
+        return query + ".limo";
+      case regexDotbit.test(query):
+        return query + ".cc";
+      case regexDomain.test(query):
+        return query.startsWith("https://") || query.startsWith("http://")
+          ? query
+          : "https://" + query;
+      default:
+        return query;
+    }
+  })();
+
   const rssURL = await fetchRSSURL(fetchURL);
   if (!rssURL)
     return errorHandle({
@@ -142,20 +155,33 @@ export async function GET(request: Request) {
       ...rssJSON,
       title: resolveInnerHTML(rssJSON.title ?? ""),
       description: resolveInnerHTML(rssJSON.description ?? ""),
-      items: rssJSON?.items.slice(0, limit),
+      items: rssJSON?.items?.slice(0, limit),
     };
     // mode && refactor
     responseBody?.items.map((x: ArticleItem) => {
       delete x.content_encoded;
+      delete x.guid;
       delete x.url;
       if (mode === "list") {
         delete x.content;
+        delete x.content_html;
+        delete x.enclosures;
       }
-      x.description = resolveInnerHTML(x.description);
-      x.title = resolveInnerHTML(x.title)
+      if (x.description || x.summary)
+        x.description = resolveInnerHTML(x.description || x.summary);
+      delete x.summary;
+
+      if (x.title) x.title = resolveInnerHTML(x.title);
     });
 
-    return NextResponse.json(responseBody);
+    return NextResponse.json(responseBody, {
+      status: 200,
+      headers: {
+        "Cache-Control": `public, s-maxage=${
+          60 * 60 * 24
+        }, stale-while-revalidate=${60 * 30}`,
+      },
+    });
   } catch (e) {
     return errorHandle({
       error: (e as { message: string }).message,
