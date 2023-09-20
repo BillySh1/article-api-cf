@@ -7,8 +7,9 @@ const escapeRegex = /[\\/\b\f\n\r\t\v]/g;
 
 const resolveInnerHTML = (content: string | undefined) => {
   return typeof content === "string"
-    ? sliceString(striptags(content || "").replaceAll(escapeRegex, ""), 140) ||
-        ""
+    ? sliceString(striptags(content || "").replaceAll(escapeRegex, ""), 140)
+        .trim()
+        .replace(/\s{2,}/g, " ") || ""
     : "";
 };
 
@@ -162,12 +163,11 @@ export async function GET(request: Request) {
       if (mode === "list") {
         delete x.content;
         delete x.content_html;
-        if (!x.description && x.summary) {
-          x.description = resolveInnerHTML(x.summary);
-        }
-        delete x.summary
       }
-      if (x.description) x.description = resolveInnerHTML(x.description);
+      if (x.description || x.summary)
+        x.description = resolveInnerHTML(x.description || x.summary);
+      delete x.summary;
+
       if (x.title) x.title = resolveInnerHTML(x.title);
     });
 
