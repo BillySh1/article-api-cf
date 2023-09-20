@@ -162,10 +162,13 @@ export async function GET(request: Request) {
       if (mode === "list") {
         delete x.content;
         delete x.content_html;
+        if (!x.description && x.summary) {
+          x.description = resolveInnerHTML(x.summary);
+        }
+        delete x.summary
       }
-      x.description = resolveInnerHTML(x.description);
-      x.title = resolveInnerHTML(x.title);
-      x.summary = resolveInnerHTML(x.summary);
+      if (x.description) x.description = resolveInnerHTML(x.description);
+      if (x.title) x.title = resolveInnerHTML(x.title);
     });
 
     return NextResponse.json(responseBody, {

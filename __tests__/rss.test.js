@@ -9,7 +9,7 @@ describe("Test For Rss Fetcher ", () => {
     const res = await queryClient("/api/rss?query=vitalik.ca");
     expect(res.status).toBe(200);
   });
-  it("It should response 200 for Custom full domain", async () => {
+  it("It should response 200 for custom full domain", async () => {
     const res = await queryClient("/api/rss?query=https://vitalik.ca");
     expect(res.status).toBe(200);
   });
