@@ -155,8 +155,9 @@ export async function GET(request: Request) {
     // limit
     const responseBody = {
       ...rssJSON,
-      title: resolveInnerHTML(rssJSON.title ?? ""),
-      description: resolveInnerHTML(rssJSON.description ?? ""),
+      title: resolveInnerHTML(rssJSON.feed.title ?? ""),
+      description: resolveInnerHTML(rssJSON.feed.description ?? ""),
+      link: rssJSON.feed.link,
       items: rssJSON?.items?.slice(0, limit),
     };
     // mode && refactor
