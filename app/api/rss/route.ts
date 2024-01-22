@@ -1,6 +1,7 @@
 import { sliceString } from "@/utils/string";
 import { NextResponse } from "next/server";
 import striptags from "striptags";
+
 export const runtime = "edge";
 
 const escapeRegex = /[\\/\b\f\n\r\t\v]/g;
@@ -21,7 +22,7 @@ enum ErrorMessages {
 interface ArticleItem {
   category: string[];
   created: number;
-  enclosures?: string[];
+  enclosure?: string[];
   link: string;
   published: number;
   title: string;
@@ -32,6 +33,9 @@ interface ArticleItem {
   description?: string;
   content_html?: string;
   summary?: string;
+  thumbnail?: string;
+  categories?: string;
+  pubDate: number;
 }
 interface ErrorResponseInterface {
   query: string;
@@ -59,10 +63,8 @@ const fetchRSSURL = async (url: string) => {
 
 const rssToJson = async (rssURL: string) => {
   try {
-    const fetchURL =
-      "https://rss-to-json-serverless-api.vercel.app/api?feedURL=" + rssURL;
-    const res = await fetch(fetchURL).then((response) => response.json());
-    return res;
+    const fetchURL = "https://api.rss2json.com/v1/api.json?rss_url=" + rssURL;
+    return await fetch(fetchURL).then((response) => response.json());
   } catch (e) {
     console.log(e, "error occurs when convert rss to json");
     return null;
@@ -142,6 +144,7 @@ export async function GET(request: Request) {
       query,
     });
   const rssJSON = await rssToJson(rssURL);
+
   if (!rssJSON)
     return errorHandle({
       error: ErrorMessages.notFound,
@@ -153,19 +156,23 @@ export async function GET(request: Request) {
     // limit
     const responseBody = {
       ...rssJSON,
-      title: resolveInnerHTML(rssJSON.title ?? ""),
-      description: resolveInnerHTML(rssJSON.description ?? ""),
+      title: resolveInnerHTML(rssJSON.feed.title ?? ""),
+      description: resolveInnerHTML(rssJSON.feed.description ?? ""),
+      link: rssJSON.feed.link,
       items: rssJSON?.items?.slice(0, limit),
     };
     // mode && refactor
     responseBody?.items.map((x: ArticleItem) => {
+      x.published = x.pubDate;
       delete x.content_encoded;
       delete x.guid;
       delete x.url;
       if (mode === "list") {
         delete x.content;
         delete x.content_html;
-        delete x.enclosures;
+        delete x.enclosure;
+        delete x.thumbnail;
+        delete x.categories;
       }
       if (x.description || x.summary)
         x.description = resolveInnerHTML(x.description || x.summary);
