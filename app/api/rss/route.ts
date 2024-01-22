@@ -144,7 +144,6 @@ export async function GET(request: Request) {
       query,
     });
   const rssJSON = await rssToJson(rssURL);
-
   if (!rssJSON)
     return errorHandle({
       error: ErrorMessages.notFound,
@@ -171,7 +170,6 @@ export async function GET(request: Request) {
         delete x.content;
         delete x.content_html;
         delete x.enclosure;
-        delete x.thumbnail;
         delete x.categories;
       }
       if (x.description || x.summary)
