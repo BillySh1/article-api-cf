@@ -52,8 +52,7 @@ const regexEns = /.*\.(eth|xyz|app|luxe|kred|art|ceo|club)$/i,
 const fetchRSSURL = async (url: string) => {
   try {
     const fetchURL =
-      "https://public-api.wordpress.com/rest/v1/read/feed/?url=" +
-      encodeURIComponent(url);
+      "https://public-api.wordpress.com/rest/v1.1/read/feed/?url=" + url;
     const res = await fetch(fetchURL).then((response) => response.json());
     return res.feeds?.[0].subscribe_URL;
   } catch (e) {
@@ -164,6 +163,7 @@ export async function GET(request: Request) {
     };
     // mode && refactor
     responseBody?.items.map((x: ArticleItem) => {
+      x.published = x.pubDate;
       delete x.content_encoded;
       delete x.guid;
       delete x.url;
@@ -179,7 +179,6 @@ export async function GET(request: Request) {
       delete x.summary;
 
       if (x.title) x.title = resolveInnerHTML(x.title);
-      x.published = x.pubDate;
     });
 
     return NextResponse.json(responseBody, {
