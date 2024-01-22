@@ -24,7 +24,7 @@ interface ArticleItem {
   created: number;
   enclosure?: string[];
   link: string;
-  published: number;
+  published?: number;
   title: string;
   content?: string;
   content_encoded?: string;
@@ -35,7 +35,7 @@ interface ArticleItem {
   summary?: string;
   thumbnail?: string;
   categories?: string;
-  pubDate: number;
+  pubDate?: number;
 }
 interface ErrorResponseInterface {
   query: string;
@@ -166,6 +166,7 @@ export async function GET(request: Request) {
       delete x.content_encoded;
       delete x.guid;
       delete x.url;
+      delete x.pubDate;
       if (mode === "list") {
         delete x.content;
         delete x.content_html;
