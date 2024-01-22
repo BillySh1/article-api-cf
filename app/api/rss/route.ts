@@ -1,6 +1,7 @@
 import { sliceString } from "@/utils/string";
 import { NextResponse } from "next/server";
 import striptags from "striptags";
+
 export const runtime = "edge";
 
 const escapeRegex = /[\\/\b\f\n\r\t\v]/g;
@@ -48,7 +49,8 @@ const regexEns = /.*\.(eth|xyz|app|luxe|kred|art|ceo|club)$/i,
 const fetchRSSURL = async (url: string) => {
   try {
     const fetchURL =
-      "https://public-api.wordpress.com/rest/v1.1/read/feed/?url=" + url;
+      "https://public-api.wordpress.com/rest/v1/read/feed/?url=" +
+      encodeURIComponent(url);
     const res = await fetch(fetchURL).then((response) => response.json());
     return res.feeds?.[0].subscribe_URL;
   } catch (e) {
@@ -59,10 +61,8 @@ const fetchRSSURL = async (url: string) => {
 
 const rssToJson = async (rssURL: string) => {
   try {
-    const fetchURL =
-      "https://rss-to-json-serverless-api.vercel.app/api?feedURL=" + rssURL;
-    const res = await fetch(fetchURL).then((response) => response.json());
-    return res;
+    const fetchURL = "https://api.rss2json.com/v1/api.json?rss_url=" + rssURL;
+    return await fetch(fetchURL).then((response) => response.json());
   } catch (e) {
     console.log(e, "error occurs when convert rss to json");
     return null;
