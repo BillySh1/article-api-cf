@@ -35,6 +35,7 @@ interface ArticleItem {
   summary?: string;
   thumbnail?: string;
   categories?: string;
+  pubDate: number;
 }
 interface ErrorResponseInterface {
   query: string;
@@ -144,6 +145,7 @@ export async function GET(request: Request) {
       query,
     });
   const rssJSON = await rssToJson(rssURL);
+
   if (!rssJSON)
     return errorHandle({
       error: ErrorMessages.notFound,
@@ -177,6 +179,7 @@ export async function GET(request: Request) {
       delete x.summary;
 
       if (x.title) x.title = resolveInnerHTML(x.title);
+      x.published = x.pubDate;
     });
 
     return NextResponse.json(responseBody, {
