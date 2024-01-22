@@ -22,7 +22,7 @@ enum ErrorMessages {
 interface ArticleItem {
   category: string[];
   created: number;
-  enclosures?: string[];
+  enclosure?: string[];
   link: string;
   published: number;
   title: string;
@@ -33,6 +33,8 @@ interface ArticleItem {
   description?: string;
   content_html?: string;
   summary?: string;
+  thumbnail?: string;
+  categories?: string;
 }
 interface ErrorResponseInterface {
   query: string;
@@ -165,7 +167,9 @@ export async function GET(request: Request) {
       if (mode === "list") {
         delete x.content;
         delete x.content_html;
-        delete x.enclosures;
+        delete x.enclosure;
+        delete x.thumbnail;
+        delete x.categories;
       }
       if (x.description || x.summary)
         x.description = resolveInnerHTML(x.description || x.summary);
