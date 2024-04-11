@@ -144,7 +144,7 @@ export async function GET(request: Request) {
       query,
     });
   const rssJSON = await rssToJson(rssURL);
-  if (!rssJSON)
+  if (!rssJSON || rssJSON?.status !== "ok")
     return errorHandle({
       error: ErrorMessages.notFound,
       code: 404,
