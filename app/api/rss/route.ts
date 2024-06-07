@@ -19,24 +19,6 @@ enum ErrorMessages {
   emptyQuery = "Empty Query",
   invalidQuery = "Invalid Query",
 }
-interface ArticleItem {
-  category: string[];
-  created: number;
-  enclosure?: string[];
-  link: string;
-  published?: number;
-  title: string;
-  content?: string;
-  content_encoded?: string;
-  url?: string;
-  guid?: string;
-  description?: string;
-  content_html?: string;
-  summary?: string;
-  thumbnail?: string;
-  categories?: string;
-  pubDate?: number;
-}
 interface ErrorResponseInterface {
   query: string;
   error: string;
@@ -57,16 +39,6 @@ const fetchRSSURL = async (url: string) => {
     return res.feeds?.[0].subscribe_URL;
   } catch (e) {
     console.log(e, "error occurs when fetching rss url");
-    return null;
-  }
-};
-
-const rssToJson = async (rssURL: string) => {
-  try {
-    const fetchURL = "https://api.rss2json.com/v1/api.json?rss_url=" + rssURL;
-    return await fetch(fetchURL).then((response) => response.json());
-  } catch (e) {
-    console.log(e, "error occurs when convert rss to json");
     return null;
   }
 };
@@ -143,35 +115,34 @@ export async function GET(request: Request) {
       code: 404,
       query,
     });
-  const rssJSON = await rssToJson(rssURL);
-  if (!rssJSON || rssJSON?.status !== "ok")
+  const { parse } = require("rss-to-json");
+  const rssJSON = await parse(rssURL);
+  if (!rssJSON?.items)
     return errorHandle({
       error: ErrorMessages.notFound,
       code: 404,
       query,
     });
-
+  delete rssJSON.category
   try {
     // limit
     const responseBody = {
       ...rssJSON,
-      title: resolveInnerHTML(rssJSON.feed.title ?? ""),
-      description: resolveInnerHTML(rssJSON.feed.description ?? ""),
-      link: rssJSON.feed.link,
+      title: resolveInnerHTML(rssJSON.title ?? ""),
+      description: resolveInnerHTML(rssJSON.description ?? ""),
+      link: rssJSON.link,
       items: rssJSON?.items?.slice(0, limit),
     };
     // mode && refactor
-    responseBody?.items.map((x: ArticleItem) => {
-      x.published = x.pubDate;
-      delete x.content_encoded;
-      delete x.guid;
-      delete x.url;
-      delete x.pubDate;
+    responseBody?.items.map((x: any) => {
+      delete x.id;
+      delete x.author;
       if (mode === "list") {
         delete x.content;
         delete x.content_html;
-        delete x.enclosure;
-        delete x.categories;
+        delete x.enclosures;
+        delete x.category;
+        delete x.media;
       }
       if (x.description || x.summary)
         x.description = resolveInnerHTML(x.description || x.summary);
