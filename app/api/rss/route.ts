@@ -123,7 +123,7 @@ export async function GET(request: Request) {
       code: 404,
       query,
     });
-
+  delete rssJSON.category
   try {
     // limit
     const responseBody = {
