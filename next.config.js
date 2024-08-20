@@ -9,11 +9,19 @@ const nextConfig = {
         { key: "Access-Control-Allow-Origin", value: "*" },
         {
           key: "Access-Control-Allow-Methods",
-          value: "GET,OPTIONS,PATCH,DELETE,POST,PUT",
+          value: "GET",
         },
       ],
     },
   ],
+  async rewrites() {
+    return [
+      {
+        source: "/:path*",
+        destination: "/api/:path*",
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig;

@@ -142,6 +142,7 @@ export async function GET(req: NextRequest) {
         ),
     ].filter(Boolean)
   ).then(([mirrorSite, paragraphSite]) => {
+    console.log(mirrorSite,'kkk')
     if (mirrorSite) {
       result.sites.push({
         platform: ArticlePlatform.mirror,
