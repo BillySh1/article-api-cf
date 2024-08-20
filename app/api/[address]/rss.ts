@@ -2,8 +2,6 @@ import { sliceString } from "@/utils/string";
 import { NextResponse } from "next/server";
 import striptags from "striptags";
 
-export const runtime = "edge";
-
 const escapeRegex = /[\\/\b\f\n\r\t\v]/g;
 
 const resolveInnerHTML = (content: string | undefined) => {
@@ -18,12 +16,6 @@ enum ErrorMessages {
   notFound = "Not Found",
   emptyQuery = "Empty Query",
   invalidQuery = "Invalid Query",
-}
-interface ErrorResponseInterface {
-  query: string;
-  error: string;
-  code: number;
-  headers?: HeadersInit;
 }
 
 const regexEns = /.*\.(eth|xyz|app|luxe|kred|art|ceo|club)$/i,
@@ -51,47 +43,18 @@ const isValidURL = (str: string) => {
     return false;
   }
 };
-const errorHandle = (props: ErrorResponseInterface) => {
-  return new Response(
-    JSON.stringify({
-      query: props.query,
-      error: props.error,
-    }),
-    {
-      status: props.code,
-      headers: {
-        "Cache-Control": "no-store",
-        ...props.headers,
-      },
-    }
-  );
-};
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const query = searchParams.get("query");
-  const mode = searchParams.get("mode") || "full";
-  const limit =
-    Number(searchParams.get("limit")) > 10
-      ? 10
-      : Number(searchParams.get("limit")) || 10;
-  if (!query)
-    return errorHandle({
-      error: ErrorMessages.emptyQuery,
-      code: 404,
-      query: "",
-    });
+export default async function getRSS(props: any) {
+  const { query, mode = "list", limit = 10 } = props;
+
+  if (!query) throw new Error(ErrorMessages.emptyQuery);
   if (
     query.includes("https") &&
     !isValidURL(query) &&
     !regexEns.test(query) &&
     !regexDotbit.test(query)
   ) {
-    return errorHandle({
-      error: ErrorMessages.invalidQuery,
-      code: 404,
-      query,
-    });
+    throw new Error(ErrorMessages.invalidQuery);
   }
   const fetchURL = (() => {
     switch (!!query) {
@@ -109,21 +72,11 @@ export async function GET(request: Request) {
   })();
 
   const rssURL = await fetchRSSURL(fetchURL);
-  if (!rssURL)
-    return errorHandle({
-      error: ErrorMessages.notFound,
-      code: 404,
-      query,
-    });
+  if (!rssURL) throw new Error(ErrorMessages.notFound);
   const { parse } = require("rss-to-json");
   const rssJSON = await parse(rssURL);
-  if (!rssJSON?.items)
-    return errorHandle({
-      error: ErrorMessages.notFound,
-      code: 404,
-      query,
-    });
-  delete rssJSON.category
+  if (!rssJSON?.items) throw new Error(ErrorMessages.notFound);
+  delete rssJSON.category;
   try {
     // limit
     const responseBody = {
@@ -150,20 +103,8 @@ export async function GET(request: Request) {
 
       if (x.title) x.title = resolveInnerHTML(x.title);
     });
-
-    return NextResponse.json(responseBody, {
-      status: 200,
-      headers: {
-        "Cache-Control": `public, s-maxage=${
-          60 * 60 * 24
-        }, stale-while-revalidate=${60 * 30}`,
-      },
-    });
-  } catch (e) {
-    return errorHandle({
-      error: (e as { message: string }).message,
-      code: 500,
-      query,
-    });
+    return responseBody;
+  } catch (e: any) {
+    throw new Error(e.message);
   }
 }

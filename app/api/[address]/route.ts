@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { handleSearchPlatform, isValidEthereumAddress } from "./utils";
+import getRSSResponse from "./rss";
 
 export const runtime = "edge";
 
@@ -7,7 +8,7 @@ const MirrorBaseURL = "https://mirror.xyz";
 const ParagraphBaseURL = "https://paragraph.xyz";
 const { parse } = require("rss-to-json");
 
-const profileAPIBaseURL = "https:/web3.bio";
+const profileAPIBaseURL = "https:/api.web3.bio";
 
 const subStr = (str: string) =>
   str.length > 100 ? `${str.substring(0, 80)}...` : str;
@@ -18,12 +19,13 @@ enum ArticlePlatform {
   mirror = "mirror",
 }
 
-const fetchRss = async (handle: string, limit: number): Promise<any> => {
+const fetchRss = async (handle: string): Promise<any> => {
   try {
-    const response = await fetch(
-      `https://contenthash.web3.bio/api/rss?query=${handle}&mode=list&limit=${limit}`
-    );
-    return await response.json();
+    return await getRSSResponse({
+      query: handle,
+      mode: "list",
+      limit: 10,
+    });
   } catch (e) {
     console.error("Error fetching RSS:", e);
     return null;
@@ -41,7 +43,7 @@ const fetchArticle = async (address: string, limit: number) => {
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
-  const address = searchParams.get("address") || "";
+  const address = searchParams.get("address")?.toLowerCase() || "";
   const domain = searchParams.get("domain") || "";
   const contenthash = searchParams.get("contenthash") === "true";
   const limit = parseInt(searchParams.get("limit") || "10", 10);
@@ -59,15 +61,17 @@ export async function GET(req: NextRequest) {
     const searchPlatform = domain ? handleSearchPlatform(domain) : "ens";
     const profile = await fetch(
       `${profileAPIBaseURL}/ns/${searchPlatform}/${domain || address}`
-    ).then((res) => res.json());
-    resolvedAddress = profile.address;
-    resolvedDomain = profile.identity;
+    )
+      .then((res) => res.json())
+      .catch((e) => null);
+    resolvedAddress = profile?.address;
+    resolvedDomain = profile?.identity;
   }
 
   const result = { ...emptyResultStruct };
 
   if (contenthash) {
-    const rssArticles = await fetchRss(resolvedDomain, limit);
+    const rssArticles = await fetchRss(resolvedDomain);
     if (rssArticles && rssArticles?.items) {
       result.items.push(
         ...rssArticles.items.map((x: any) => ({
