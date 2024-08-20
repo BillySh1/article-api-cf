@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { handleSearchPlatform, isValidEthereumAddress } from "./utils";
 import getRSSResponse from "./rss";
+import parse from './parse'
 
 export const runtime = "edge";
 
 const MirrorBaseURL = "https://mirror.xyz";
 const ParagraphBaseURL = "https://paragraph.xyz";
-const { parse } = require("rss-to-json");
 
 const profileAPIBaseURL = "https:/api.web3.bio";
 
@@ -142,7 +142,6 @@ export async function GET(req: NextRequest) {
         ),
     ].filter(Boolean)
   ).then(([mirrorSite, paragraphSite]) => {
-    console.log(mirrorSite,'kkk')
     if (mirrorSite) {
       result.sites.push({
         platform: ArticlePlatform.mirror,
