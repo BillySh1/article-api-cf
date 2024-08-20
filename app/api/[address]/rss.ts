@@ -1,41 +1,45 @@
 import { sliceString } from "@/utils/string";
-import { NextResponse } from "next/server";
+import parse from "./parse";
 import striptags from "striptags";
 
-const escapeRegex = /[\\/\b\f\n\r\t\v]/g;
+const ESCAPE_REGEX = /[\\/\b\f\n\r\t\v]/g;
+const WHITESPACE_REGEX = /\s{2,}/g;
+const MAX_DESCRIPTION_LENGTH = 140;
 
-const resolveInnerHTML = (content: string | undefined) => {
-  return typeof content === "string"
-    ? sliceString(striptags(content || "").replaceAll(escapeRegex, ""), 140)
-        .trim()
-        .replace(/\s{2,}/g, " ") || ""
-    : "";
+const resolveInnerHTML = (content: string | undefined): string => {
+  if (typeof content !== "string") return "";
+  return sliceString(
+    striptags(content)
+      .replace(ESCAPE_REGEX, "")
+      .trim()
+      .replace(WHITESPACE_REGEX, " "),
+    MAX_DESCRIPTION_LENGTH
+  );
 };
 
 enum ErrorMessages {
-  notFound = "Not Found",
-  emptyQuery = "Empty Query",
-  invalidQuery = "Invalid Query",
+  NotFound = "Not Found",
+  EmptyQuery = "Empty Query",
+  InvalidQuery = "Invalid Query",
 }
 
-const regexEns = /.*\.(eth|xyz|app|luxe|kred|art|ceo|club)$/i,
-  regexDotbit = /.*\.bit$/i,
-  regexDomain =
-    /(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]/g;
+const REGEX_ENS = /.*\.(eth|xyz|app|luxe|kred|art|ceo|club)$/i;
+const REGEX_DOTBIT = /.*\.bit$/i;
+const REGEX_DOMAIN =
+  /(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]/g;
 
-const fetchRSSURL = async (url: string) => {
+const fetchRSSURL = async (url: string): Promise<string | null> => {
   try {
-    const fetchURL =
-      "https://public-api.wordpress.com/rest/v1.1/read/feed/?url=" + url;
+    const fetchURL = `https://public-api.wordpress.com/rest/v1.1/read/feed/?url=${url}`;
     const res = await fetch(fetchURL).then((response) => response.json());
-    return res.feeds?.[0].subscribe_URL;
+    return res.feeds?.[0].subscribe_URL ?? null;
   } catch (e) {
-    console.log(e, "error occurs when fetching rss url");
+    console.error("Error occurs when fetching RSS URL:", e);
     return null;
   }
 };
 
-const isValidURL = (str: string) => {
+const isValidURL = (str: string): boolean => {
   try {
     new URL(str);
     return true;
@@ -44,67 +48,91 @@ const isValidURL = (str: string) => {
   }
 };
 
-export default async function getRSS(props: any) {
+const getFetchURL = (query: string): string => {
+  if (REGEX_ENS.test(query)) return `${query}.limo`;
+  if (REGEX_DOTBIT.test(query)) return `${query}.cc`;
+  if (REGEX_DOMAIN.test(query)) {
+    return query.startsWith("https://") || query.startsWith("http://")
+      ? query
+      : `https://${query}`;
+  }
+  return query;
+};
+
+interface RSSItem {
+  title?: string;
+  description?: string;
+  summary?: string;
+  content?: string;
+  content_html?: string;
+  enclosures?: any;
+  category?: any;
+  media?: any;
+  [key: string]: any;
+}
+
+interface RSSFeed {
+  title?: string;
+  description?: string;
+  link?: string;
+  items?: RSSItem[];
+  [key: string]: any;
+}
+
+export default async function getRSS(props: {
+  query: string;
+  mode?: "list" | "full";
+  limit?: number;
+}): Promise<RSSFeed> {
   const { query, mode = "list", limit = 10 } = props;
 
-  if (!query) throw new Error(ErrorMessages.emptyQuery);
+  if (!query) throw new Error(ErrorMessages.EmptyQuery);
   if (
     query.includes("https") &&
     !isValidURL(query) &&
-    !regexEns.test(query) &&
-    !regexDotbit.test(query)
+    !REGEX_ENS.test(query) &&
+    !REGEX_DOTBIT.test(query)
   ) {
-    throw new Error(ErrorMessages.invalidQuery);
+    throw new Error(ErrorMessages.InvalidQuery);
   }
-  const fetchURL = (() => {
-    switch (!!query) {
-      case regexEns.test(query):
-        return query + ".limo";
-      case regexDotbit.test(query):
-        return query + ".cc";
-      case regexDomain.test(query):
-        return query.startsWith("https://") || query.startsWith("http://")
-          ? query
-          : "https://" + query;
-      default:
-        return query;
-    }
-  })();
 
+  const fetchURL = getFetchURL(query);
   const rssURL = await fetchRSSURL(fetchURL);
-  if (!rssURL) throw new Error(ErrorMessages.notFound);
-  const { parse } = require("rss-to-json");
-  const rssJSON = await parse(rssURL);
-  if (!rssJSON?.items) throw new Error(ErrorMessages.notFound);
-  delete rssJSON.category;
-  try {
-    // limit
-    const responseBody = {
-      ...rssJSON,
-      title: resolveInnerHTML(rssJSON.title ?? ""),
-      description: resolveInnerHTML(rssJSON.description ?? ""),
-      link: rssJSON.link,
-      items: rssJSON?.items?.slice(0, limit),
-    };
-    // mode && refactor
-    responseBody?.items.map((x: any) => {
-      delete x.id;
-      delete x.author;
-      if (mode === "list") {
-        delete x.content;
-        delete x.content_html;
-        delete x.enclosures;
-        delete x.category;
-        delete x.media;
-      }
-      if (x.description || x.summary)
-        x.description = resolveInnerHTML(x.description || x.summary);
-      delete x.summary;
+  if (!rssURL) throw new Error(ErrorMessages.NotFound);
 
-      if (x.title) x.title = resolveInnerHTML(x.title);
-    });
-    return responseBody;
-  } catch (e: any) {
-    throw new Error(e.message);
-  }
+  const rssJSON: RSSFeed | null = await parse(rssURL);
+  if (!rssJSON?.items) throw new Error(ErrorMessages.NotFound);
+
+  delete rssJSON.category;
+
+  const responseBody: RSSFeed = {
+    ...rssJSON,
+    title: resolveInnerHTML(rssJSON.title),
+    description: resolveInnerHTML(rssJSON.description),
+    link: rssJSON.link,
+    items: rssJSON.items.slice(0, limit).map((item: RSSItem) => {
+      const newItem: RSSItem = { ...item };
+      delete newItem.id;
+      delete newItem.author;
+
+      if (mode === "list") {
+        delete newItem.content;
+        delete newItem.content_html;
+        delete newItem.enclosures;
+        delete newItem.category;
+        delete newItem.media;
+      }
+
+      newItem.description = resolveInnerHTML(
+        newItem.description || newItem.summary
+      );
+      delete newItem.summary;
+
+      if (newItem.title) newItem.title = resolveInnerHTML(newItem.title);
+
+      return newItem;
+    }),
+  };
+
+  return responseBody;
 }
