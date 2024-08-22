@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Web3.bio Articles API",
-  description: "Convert ENS Domain's RSS & RSS URL to JSON format",
+  title: "Web3.bio Article API",
+  description: "Web3.bio Article API aggregates articles from ENS contenthash, Mirror, and Paragraph.",
 };
 
 export default function RootLayout({
