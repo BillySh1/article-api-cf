@@ -1,9 +1,8 @@
-import "./globals.css";
 import type { Metadata } from "next";
-
+import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "RSS Fetcher",
+  title: "Web3.bio Articles API",
   description: "Convert ENS Domain's RSS & RSS URL to JSON format",
 };
 
