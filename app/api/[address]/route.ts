@@ -122,18 +122,18 @@ const fetchSiteInfo = async (
   paragraphUser: string,
   items: any[]
 ) => {
-  const sitePromises = [
-    items.some((x) => x.platform === ARTICLE_PLATFORMS.MIRROR) &&
-      parse(`https://mirror.xyz/${resolvedDomain}/feed/atom`),
-    items.some((x) => x.platform === ARTICLE_PLATFORMS.PARAGRAPH) &&
-      parse(
+  const mirrorSite = items.some((x) => x.platform === ARTICLE_PLATFORMS.MIRROR)
+    ? await parse(`https://mirror.xyz/${resolvedDomain}/feed/atom`)
+    : null;
+  const paragraphSite = items.some(
+    (x) => x.platform === ARTICLE_PLATFORMS.PARAGRAPH
+  )
+    ? await parse(
         `https://paragraph.xyz/api/blogs/rss/@${
           paragraphUser || resolvedDomain
         }`
-      ),
-  ].filter(Boolean);
-
-  const [mirrorSite, paragraphSite] = await Promise.all(sitePromises);
+      )
+    : null;
 
   const sites = [];
   if (mirrorSite) {
@@ -199,6 +199,7 @@ export async function GET(req: NextRequest) {
     paragraphUser,
     result.items
   );
+
   result.sites.push(...sites);
 
   result.items = result.items
