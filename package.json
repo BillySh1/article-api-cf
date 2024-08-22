@@ -1,6 +1,6 @@
 {
-  "name": "rss-fetcher",
-  "version": "0.1.0",
+  "name": "article-api",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -10,12 +10,12 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "autoprefixer": "10.4.15",
-    "next": "^13.5.2",
-    "react": "^18.2.0",
-    "rss-to-json": "^2.1.1",
-    "tailwindcss": "3.3.3",
-    "typescript": "5.2.2"
+    "axios": "^1.7.4",
+    "fast-xml-parser": "^4.4.1",
+    "next": "^14.2.6",
+    "react": "^18.3.1",
+    "typescript": "5.2.2",
+    "viem": "^2.19.7"
   },
   "devDependencies": {
     "@babel/plugin-transform-modules-commonjs": "^7.22.15",
@@ -24,9 +24,9 @@
     "@types/react-dom": "18.2.7",
     "dotenv": "^16.3.1",
     "eslint": "8.48.0",
-    "eslint-config-next": "^13.5.2",
+    "eslint-config-next": "^14.2.6",
     "jest": "^29.5.0",
-    "react-dom": "^18.2.0",
+    "react-dom": "^18.3.1",
     "striptags": "^3.2.0"
   }
 }
