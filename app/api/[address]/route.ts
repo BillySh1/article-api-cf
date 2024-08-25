@@ -12,7 +12,7 @@ const BASE_URLS = {
 };
 
 const ARTICLE_PLATFORMS = {
-  CONTENTHASH: "contenthash",
+  CONTENTHASH: "website",
   PARAGRAPH: "paragraph",
   MIRROR: "mirror",
 };
