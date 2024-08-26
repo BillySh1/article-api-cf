@@ -11,10 +11,13 @@ const resolveInnerHTML = (
   slice?: boolean
 ): string => {
   if (typeof content !== "string") return "";
-  const contentStr = striptags(content)
-    .replace(ESCAPE_REGEX, "")
-    .trim()
-    .replace(WHITESPACE_REGEX, " ");
+  const he = require("he");
+  const contentStr = he.decode(
+    striptags(content)
+      .replace(ESCAPE_REGEX, "")
+      .trim()
+      .replace(WHITESPACE_REGEX, " ")
+  );
   return slice ? sliceString(contentStr, MAX_DESCRIPTION_LENGTH) : contentStr;
 };
 
@@ -122,7 +125,7 @@ export default async function getRSS(props: {
         delete newItem.category;
         delete newItem.media;
       }
-      newItem.body = newItem.description || newItem.summary;
+      newItem.body = (newItem.description || newItem.summary)?.trim();
       newItem.description = resolveInnerHTML(
         newItem.description || newItem.summary,
         true
