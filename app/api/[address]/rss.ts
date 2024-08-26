@@ -102,7 +102,6 @@ export default async function getRSS(props: {
 
   const rssJSON: RSSFeed | null = await parse(rssURL);
   if (!rssJSON?.items) throw new Error(ErrorMessages.NotFound);
-
   delete rssJSON.category;
 
   const responseBody: RSSFeed = {
@@ -122,7 +121,7 @@ export default async function getRSS(props: {
         delete newItem.category;
         delete newItem.media;
       }
-
+      newItem.body = newItem.description || newItem.summary;
       newItem.description = resolveInnerHTML(
         newItem.description || newItem.summary
       );

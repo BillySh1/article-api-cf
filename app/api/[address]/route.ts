@@ -65,7 +65,7 @@ const processContenthashArticles = async (resolvedDomain: string) => {
       link: x.link,
       description: x.description,
       published: new Date(x.published).getTime(),
-      body: x.description,
+      body: x.body,
       platform: ARTICLE_PLATFORMS.CONTENTHASH,
     })),
     site: {
