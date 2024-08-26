@@ -122,7 +122,7 @@ export default async function getRSS(props: {
         delete newItem.category;
         delete newItem.media;
       }
-      newItem.body = resolveInnerHTML(newItem.description || newItem.summary);
+      newItem.body = newItem.description || newItem.summary;
       newItem.description = resolveInnerHTML(
         newItem.description || newItem.summary,
         true
