@@ -65,7 +65,7 @@ const processContenthashArticles = async (resolvedDomain: string) => {
       link: x.link,
       description: x.description,
       published: new Date(x.published).getTime(),
-      body: x.description,
+      body: x.body,
       platform: ARTICLE_PLATFORMS.CONTENTHASH,
     })),
     site: {
@@ -122,40 +122,35 @@ const fetchSiteInfo = async (
   paragraphUser: string,
   items: any[]
 ) => {
-  const mirrorSite = items.some((x) => x.platform === ARTICLE_PLATFORMS.MIRROR)
-    ? await parse(`https://mirror.xyz/${resolvedDomain}/feed/atom`)
-    : null;
-  const paragraphSite = items.some(
-    (x) => x.platform === ARTICLE_PLATFORMS.PARAGRAPH
-  )
-    ? await parse(
-        `https://paragraph.xyz/api/blogs/rss/@${
-          paragraphUser || resolvedDomain
-        }`
-      )
-    : null;
-
   const sites = [];
-  if (mirrorSite) {
+
+  if (items.some((x) => x.platform === ARTICLE_PLATFORMS.MIRROR)) {
+    const mirrorSite = await parse(
+      `https://mirror.xyz/${resolvedDomain}/feed/atom`
+    );
     sites.push({
       platform: ARTICLE_PLATFORMS.MIRROR,
-      name: mirrorSite.title || `${resolvedDomain}'s Mirror`,
-      description: mirrorSite.description || "",
-      image: mirrorSite.image || "",
-      link: mirrorSite.link || `${BASE_URLS.MIRROR}/${resolvedDomain}`,
+      name: mirrorSite?.title || `${resolvedDomain}'s Mirror`,
+      description: mirrorSite?.description || "",
+      image: mirrorSite?.image || "",
+      link: mirrorSite?.link || `${BASE_URLS.MIRROR}/${resolvedDomain}`,
     });
   }
-  if (paragraphSite) {
+
+  if (items.some((x) => x.platform === ARTICLE_PLATFORMS.PARAGRAPH)) {
+    const paragraphSite = await parse(
+      `https://paragraph.xyz/api/blogs/rss/@${paragraphUser || resolvedDomain}`
+    );
     sites.push({
       platform: ARTICLE_PLATFORMS.PARAGRAPH,
-      name: paragraphSite.title || `${resolvedDomain}'s Paragraph`,
+      name: paragraphSite?.title || `${resolvedDomain}'s Paragraph`,
       description:
-        paragraphSite.description === "undefined"
+        paragraphSite?.description === "undefined"
           ? ""
-          : paragraphSite.description || "",
-      image: paragraphSite.image || "",
+          : paragraphSite?.description || "",
+      image: paragraphSite?.image || "",
       link:
-        paragraphSite.link ||
+        paragraphSite?.link ||
         `${BASE_URLS.PARAGRAPH}/@${paragraphUser || resolvedDomain}`,
     });
   }

@@ -6,15 +6,19 @@ const ESCAPE_REGEX = /[\\/\b\f\n\r\t\v]/g;
 const WHITESPACE_REGEX = /\s{2,}/g;
 const MAX_DESCRIPTION_LENGTH = 140;
 
-const resolveInnerHTML = (content: string | undefined): string => {
+const resolveInnerHTML = (
+  content: string | undefined,
+  slice?: boolean
+): string => {
   if (typeof content !== "string") return "";
-  return sliceString(
+  const he = require("he");
+  const contentStr = he.decode(
     striptags(content)
       .replace(ESCAPE_REGEX, "")
       .trim()
-      .replace(WHITESPACE_REGEX, " "),
-    MAX_DESCRIPTION_LENGTH
+      .replace(WHITESPACE_REGEX, " ")
   );
+  return slice ? sliceString(contentStr, MAX_DESCRIPTION_LENGTH) : contentStr;
 };
 
 enum ErrorMessages {
@@ -102,13 +106,12 @@ export default async function getRSS(props: {
 
   const rssJSON: RSSFeed | null = await parse(rssURL);
   if (!rssJSON?.items) throw new Error(ErrorMessages.NotFound);
-
   delete rssJSON.category;
 
   const responseBody: RSSFeed = {
     ...rssJSON,
-    title: resolveInnerHTML(rssJSON.title),
-    description: resolveInnerHTML(rssJSON.description),
+    title: resolveInnerHTML(rssJSON.title, true),
+    description: resolveInnerHTML(rssJSON.description, true),
     link: rssJSON.link,
     items: rssJSON.items.slice(0, limit).map((item: RSSItem) => {
       const newItem: RSSItem = { ...item };
@@ -122,13 +125,14 @@ export default async function getRSS(props: {
         delete newItem.category;
         delete newItem.media;
       }
-
+      newItem.body = (newItem.description || newItem.summary)?.trim();
       newItem.description = resolveInnerHTML(
-        newItem.description || newItem.summary
+        newItem.description || newItem.summary,
+        true
       );
       delete newItem.summary;
 
-      if (newItem.title) newItem.title = resolveInnerHTML(newItem.title);
+      if (newItem.title) newItem.title = resolveInnerHTML(newItem.title, true);
 
       return newItem;
     }),

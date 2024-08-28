@@ -1,10 +1,13 @@
 import { XMLParser } from "fast-xml-parser";
-import axios, { AxiosRequestConfig } from "axios";
 
-export default async function parse(url: string, config?: AxiosRequestConfig) {
+export default async function parse(url: string) {
   if (!/(^http(s?):\/\/[^\s$.?#].[^\s]*)/i.test(url)) return null;
 
-  const { data } = await axios(url, config);
+  const data = await fetch(url)
+    .then((res) => res.text())
+    .catch((e) => null);
+
+  if (!data) return null;
 
   const xml = new XMLParser({
     attributeNamePrefix: "",
@@ -17,7 +20,7 @@ export default async function parse(url: string, config?: AxiosRequestConfig) {
   let channel =
     result.rss && result.rss.channel ? result.rss.channel : result.feed;
   if (Array.isArray(channel)) channel = channel[0];
-
+  if (!channel) return null;
   const rss = {
     title: channel.title ?? "",
     description: channel.description || channel.subtitle || "",
