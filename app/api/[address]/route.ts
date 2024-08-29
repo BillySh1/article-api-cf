@@ -108,7 +108,7 @@ const processFireflyArticles = (articles: any[], resolvedDomain: string) => {
           : `${BASE_URLS.PARAGRAPH}/@${resolvedDomain}/${content.slug}`,
         description: subStr(content.markdown),
         published,
-        body: resolveInnerHTML(content.markdown, false, ALLOW_TAGS),
+        body: content.markdown,
         platform: ARTICLE_PLATFORMS.PARAGRAPH,
       });
     }
