@@ -6,7 +6,31 @@ const ESCAPE_REGEX = /[\\/\b\f\n\r\t\v]/g;
 const WHITESPACE_REGEX = /\s{2,}/g;
 const MAX_DESCRIPTION_LENGTH = 140;
 
-const resolveInnerHTML = (
+export const ALLOW_TAGS = [
+  "h1",
+  "h2",
+  "h3",
+  "a",
+  "string",
+  "ins",
+  "u",
+  "s",
+  "del",
+  "em",
+  "hr",
+  "p",
+  "img",
+  "ul",
+  "li",
+  "code",
+  "pre",
+  "blockquote",
+  "table",
+  "tr",
+  "th",
+  "td",
+];
+export const resolveInnerHTML = (
   content: string | undefined,
   slice?: boolean,
   allowTags?: string[]
@@ -137,30 +161,7 @@ export default async function getRSS(props: {
       newItem.body = resolveInnerHTML(
         newItem.description || newItem.summary,
         false,
-        [
-          "h1",
-          "h2",
-          "h3",
-          "a",
-          "string",
-          "ins",
-          "u",
-          "s",
-          "del",
-          "em",
-          "hr",
-          "p",
-          "img",
-          "ul",
-          "li",
-          "code",
-          "pre",
-          "blockquote",
-          "table",
-          "tr",
-          "th",
-          "td",
-        ]
+        ALLOW_TAGS
       );
       newItem.description = resolveInnerHTML(
         newItem.description || newItem.summary,

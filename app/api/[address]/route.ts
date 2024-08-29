@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { handleSearchPlatform, isValidEthereumAddress } from "./utils";
-import getRSSResponse from "./rss";
+import getRSSResponse, { ALLOW_TAGS, resolveInnerHTML } from "./rss";
 import parse from "./parse";
 
 export const runtime = "edge";
@@ -92,7 +92,7 @@ const processFireflyArticles = (articles: any[], resolvedDomain: string) => {
         link: `${BASE_URLS.MIRROR}/${resolvedDomain}/${x.original_id}`,
         description: subStr(content.content.body),
         published,
-        body: content.content.body,
+        body: resolveInnerHTML(content.content.body, false, ALLOW_TAGS),
         platform: ARTICLE_PLATFORMS.MIRROR,
       });
     } else if (x.platform === 2) {
@@ -108,7 +108,7 @@ const processFireflyArticles = (articles: any[], resolvedDomain: string) => {
           : `${BASE_URLS.PARAGRAPH}/@${resolvedDomain}/${content.slug}`,
         description: subStr(content.markdown),
         published,
-        body: content.markdown,
+        body: resolveInnerHTML(content.markdown, false, ALLOW_TAGS),
         platform: ARTICLE_PLATFORMS.PARAGRAPH,
       });
     }
