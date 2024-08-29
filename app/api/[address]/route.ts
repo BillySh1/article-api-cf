@@ -92,7 +92,7 @@ const processFireflyArticles = (articles: any[], resolvedDomain: string) => {
         link: `${BASE_URLS.MIRROR}/${resolvedDomain}/${x.original_id}`,
         description: subStr(content.content.body),
         published,
-        body: resolveInnerHTML(content.content.body, false, ALLOW_TAGS),
+        body: content.content.body,
         platform: ARTICLE_PLATFORMS.MIRROR,
       });
     } else if (x.platform === 2) {
