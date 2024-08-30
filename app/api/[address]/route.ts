@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { handleSearchPlatform, isValidEthereumAddress } from "./utils";
-import getRSSResponse, { ALLOW_TAGS, resolveInnerHTML } from "./rss";
+import getRSSResponse from "./rss";
 import parse from "./parse";
 
 export const runtime = "edge";
