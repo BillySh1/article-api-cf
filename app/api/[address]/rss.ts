@@ -6,14 +6,47 @@ const ESCAPE_REGEX = /[\\/\b\f\n\r\t\v]/g;
 const WHITESPACE_REGEX = /\s{2,}/g;
 const MAX_DESCRIPTION_LENGTH = 140;
 
-const resolveInnerHTML = (
+export const ALLOW_TAGS = [
+  "h1",
+  "h2",
+  "h3",
+  "a",
+  "string",
+  "ins",
+  "u",
+  "s",
+  "del",
+  "em",
+  "hr",
+  "p",
+  "img",
+  "ul",
+  "li",
+  "code",
+  "pre",
+  "blockquote",
+  "table",
+  "tr",
+  "th",
+  "td",
+];
+export const resolveInnerHTML = (
   content: string | undefined,
-  slice?: boolean
+  slice?: boolean,
+  allowTags?: string[]
 ): string => {
   if (typeof content !== "string") return "";
   const he = require("he");
   const contentStr = he.decode(
-    striptags(content)
+    striptags(
+      content,
+      allowTags
+        ? allowTags.reduce((pre, cur) => {
+            pre += `<${cur}>`;
+            return pre;
+          }, "")
+        : ""
+    )
       .replace(ESCAPE_REGEX, "")
       .trim()
       .replace(WHITESPACE_REGEX, " ")
@@ -125,7 +158,11 @@ export default async function getRSS(props: {
         delete newItem.category;
         delete newItem.media;
       }
-      newItem.body = (newItem.description || newItem.summary)?.trim();
+      newItem.body = resolveInnerHTML(
+        newItem.description || newItem.summary,
+        false,
+        ALLOW_TAGS
+      );
       newItem.description = resolveInnerHTML(
         newItem.description || newItem.summary,
         true
