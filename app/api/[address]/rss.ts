@@ -29,6 +29,7 @@ enum ErrorMessages {
 
 const REGEX_ENS = /.*\.(eth|xyz|app|luxe|kred|art|ceo|club)$/i;
 const REGEX_DOTBIT = /.*\.bit$/i;
+const REGEX_SNS = /.*\.(sol)$/i;
 const REGEX_DOMAIN =
   /(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]/g;
 
@@ -55,6 +56,7 @@ const isValidURL = (str: string): boolean => {
 const getFetchURL = (query: string): string => {
   if (REGEX_ENS.test(query)) return `${query}.limo`;
   if (REGEX_DOTBIT.test(query)) return `${query}.cc`;
+  if (REGEX_SNS.test(query)) return `${query}.build`;
   if (REGEX_DOMAIN.test(query)) {
     return query.startsWith("https://") || query.startsWith("http://")
       ? query

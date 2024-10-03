@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { handleSearchPlatform, isValidEthereumAddress } from "./utils";
+import {
+  handleSearchPlatform,
+  isValidEthereumAddress,
+  isValidSolanaAddress,
+} from "./utils";
 import getRSSResponse from "./rss";
 import parse from "./parse";
 
@@ -44,7 +48,7 @@ const resolveAddressAndDomain = async (address: string, domain: string) => {
 
   const searchPlatform = domain ? handleSearchPlatform(domain) : "ens";
   const profile = await fetch(
-    `${BASE_URLS.PROFILE_API}/ns/${searchPlatform}/${domain || address}`
+    `${BASE_URLS.PROFILE_API}/ns/${searchPlatform}/${domain || address}`,
   )
     .then((res) => res.json())
     .catch(() => null);
@@ -120,13 +124,13 @@ const processFireflyArticles = (articles: any[], resolvedDomain: string) => {
 const fetchSiteInfo = async (
   resolvedDomain: string,
   paragraphUser: string,
-  items: any[]
+  items: any[],
 ) => {
   const sites = [];
 
   if (items.some((x) => x.platform === ARTICLE_PLATFORMS.MIRROR)) {
     const mirrorSite = await parse(
-      `https://mirror.xyz/${resolvedDomain}/feed/atom`
+      `https://mirror.xyz/${resolvedDomain}/feed/atom`,
     );
     sites.push({
       platform: ARTICLE_PLATFORMS.MIRROR,
@@ -139,7 +143,7 @@ const fetchSiteInfo = async (
 
   if (items.some((x) => x.platform === ARTICLE_PLATFORMS.PARAGRAPH)) {
     const paragraphSite = await parse(
-      `https://paragraph.xyz/api/blogs/rss/@${paragraphUser || resolvedDomain}`
+      `https://paragraph.xyz/api/blogs/rss/@${paragraphUser || resolvedDomain}`,
     );
     sites.push({
       platform: ARTICLE_PLATFORMS.PARAGRAPH,
@@ -162,16 +166,19 @@ export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
   const address = searchParams.get("address")?.toLowerCase() || "";
   const domain = searchParams.get("domain") || "";
-  const contenthash = searchParams.get("contenthash") === "true";
+  const contenthash = searchParams.get("contenthash") || "";
   const limit = parseInt(searchParams.get("limit") || "10", 10);
 
-  if (!isValidEthereumAddress(address) && !domain) {
+  if (
+    !(isValidEthereumAddress(address) || isValidSolanaAddress(address)) &&
+    !contenthash
+  ) {
     return NextResponse.json({ sites: [], items: [] });
   }
 
   const { resolvedAddress, resolvedDomain } = await resolveAddressAndDomain(
     address,
-    domain
+    domain,
   );
 
   const result: { sites: any[]; items: any[] } = { sites: [], items: [] };
@@ -182,20 +189,22 @@ export async function GET(req: NextRequest) {
     if (contenthashResult.site) result.sites.push(contenthashResult.site);
   }
 
-  const fireflyArticles = await fetchArticle(resolvedAddress, limit);
-  const { items: fireflyItems, paragraphUser } = processFireflyArticles(
-    fireflyArticles?.data,
-    resolvedDomain
-  );
-  result.items.push(...fireflyItems);
+  if (isValidEthereumAddress(resolvedAddress)) {
+    const fireflyArticles = await fetchArticle(resolvedAddress, limit);
+    const { items: fireflyItems, paragraphUser } = processFireflyArticles(
+      fireflyArticles?.data,
+      resolvedDomain,
+    );
+    result.items.push(...fireflyItems);
+  
+    const sites = await fetchSiteInfo(
+      resolvedDomain,
+      paragraphUser,
+      result.items,
+    );
 
-  const sites = await fetchSiteInfo(
-    resolvedDomain,
-    paragraphUser,
-    result.items
-  );
-
-  result.sites.push(...sites);
+    result.sites.push(...sites);
+  }
 
   result.items = result.items
     .sort((a, b) => b.published - a.published)

@@ -16,10 +16,16 @@ export const regexEns = /.*?\.(eth|xyz|app|luxe|kred|art|ceo|club)$/i,
   regexAvatar = /^0x[a-f0-9]{66}$/i;
 
 export const isValidEthereumAddress = (address: string) => {
-  if (!isAddress(address)) return false; // invalid ethereum address
+  if (!isAddress(address)) return false; // invalid Ethereum address
   if (address.match(/^0x0*.$|0x[123468abef]*$|0x0*dead$/i)) return false; // empty & burn address
   return true;
 };
+
+export const isValidSolanaAddress = (address: string) => {
+  if (!regexSolana.test(address)) return false; // invalid Solana address
+  return true;
+};
+
 export const handleSearchPlatform = (term: string) => {
   switch (!!term) {
     case regexEns.test(term):
