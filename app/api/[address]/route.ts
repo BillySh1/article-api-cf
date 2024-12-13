@@ -187,7 +187,8 @@ export async function GET(req: NextRequest) {
 
   if (contenthash) {
     const contenthashResult = await processContenthashArticles(resolvedDomain);
-    result.items.push(...contenthashResult.items);
+    if (contenthashResult?.items?.length > 0)
+      result.items.push(...contenthashResult.items);
     if (contenthashResult.site) result.sites.push(contenthashResult.site);
   }
 
