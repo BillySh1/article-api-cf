@@ -21,8 +21,10 @@ const ARTICLE_PLATFORMS = {
   MIRROR: "mirror",
 };
 
-const subStr = (str: string) =>
-  str.length > 100 ? `${str.substring(0, 80)}...` : str;
+const subStr = (str: string) => {
+  if (!str) return "";
+  return str.length > 100 ? `${str.substring(0, 80)}...` : str;
+};
 
 const fetchRss = async (handle: string): Promise<any> => {
   try {
@@ -48,7 +50,7 @@ const resolveAddressAndDomain = async (address: string, domain: string) => {
 
   const searchPlatform = domain ? handleSearchPlatform(domain) : "ens";
   const profile = await fetch(
-    `${BASE_URLS.PROFILE_API}/ns/${searchPlatform}/${domain || address}`,
+    `${BASE_URLS.PROFILE_API}/ns/${searchPlatform}/${domain || address}`
   )
     .then((res) => res.json())
     .catch(() => null);
@@ -124,13 +126,13 @@ const processFireflyArticles = (articles: any[], resolvedDomain: string) => {
 const fetchSiteInfo = async (
   resolvedDomain: string,
   paragraphUser: string,
-  items: any[],
+  items: any[]
 ) => {
   const sites = [];
 
   if (items.some((x) => x.platform === ARTICLE_PLATFORMS.MIRROR)) {
     const mirrorSite = await parse(
-      `https://mirror.xyz/${resolvedDomain}/feed/atom`,
+      `https://mirror.xyz/${resolvedDomain}/feed/atom`
     );
     sites.push({
       platform: ARTICLE_PLATFORMS.MIRROR,
@@ -143,7 +145,7 @@ const fetchSiteInfo = async (
 
   if (items.some((x) => x.platform === ARTICLE_PLATFORMS.PARAGRAPH)) {
     const paragraphSite = await parse(
-      `https://paragraph.xyz/api/blogs/rss/@${paragraphUser || resolvedDomain}`,
+      `https://paragraph.xyz/api/blogs/rss/@${paragraphUser || resolvedDomain}`
     );
     sites.push({
       platform: ARTICLE_PLATFORMS.PARAGRAPH,
@@ -178,7 +180,7 @@ export async function GET(req: NextRequest) {
 
   const { resolvedAddress, resolvedDomain } = await resolveAddressAndDomain(
     address,
-    domain,
+    domain
   );
 
   const result: { sites: any[]; items: any[] } = { sites: [], items: [] };
@@ -193,14 +195,14 @@ export async function GET(req: NextRequest) {
     const fireflyArticles = await fetchArticle(resolvedAddress, limit);
     const { items: fireflyItems, paragraphUser } = processFireflyArticles(
       fireflyArticles?.data,
-      resolvedDomain,
+      resolvedDomain
     );
     result.items.push(...fireflyItems);
-  
+
     const sites = await fetchSiteInfo(
       resolvedDomain,
       paragraphUser,
-      result.items,
+      result.items
     );
 
     result.sites.push(...sites);
