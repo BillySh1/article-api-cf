@@ -39,7 +39,7 @@ const fetchRSSURL = async (url: string): Promise<string | null> => {
     const res = await fetch(fetchURL).then((response) => response.json());
     return res.feeds?.[0].subscribe_URL ?? null;
   } catch (e) {
-    console.error("Error occurs when fetching RSS URL:", e);
+    console.log("Error occurs when fetching RSS URL:", e);
     return null;
   }
 };
@@ -89,7 +89,7 @@ export default async function getRSS(props: {
   query: string;
   mode?: "list" | "full";
   limit?: number;
-}): Promise<RSSFeed> {
+}): Promise<RSSFeed | null> {
   const { query, mode = "list", limit = 10 } = props;
 
   if (!query) throw new Error(ErrorMessages.EmptyQuery);
@@ -104,7 +104,7 @@ export default async function getRSS(props: {
 
   const fetchURL = getFetchURL(query);
   const rssURL = await fetchRSSURL(fetchURL);
-  if (!rssURL) throw new Error(ErrorMessages.NotFound);
+  if (!rssURL) return null;
 
   const rssJSON: RSSFeed | null = await parse(rssURL);
   if (!rssJSON?.items) throw new Error(ErrorMessages.NotFound);
