@@ -107,7 +107,9 @@ const processFireflyArticles = (articles: any[], resolvedDomain: string) => {
     } else if (x.platform === 2) {
       if (content.url && !paragraphUser) {
         paragraphUser = content.url.includes("@")
-          ? content.url.match(/paragraph\.com\/@([a-zA-Z0-9_\.-]+)/)?.[1]
+          ? content.url.match(
+              /paragraph\.(?:com|xyz)\/@([a-zA-Z0-9_\.-]+)/,
+            )?.[1]
           : regexDomain.exec(content.url)?.[1];
       }
       items.push({
