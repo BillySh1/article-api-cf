@@ -20,4 +20,12 @@ describe("Test For Rss Fetcher ", () => {
     const json = await res.json();
     expect(json.sites?.[0]?.link).toBe("https://paragraph.com/@jamesbeck.eth");
   });
+  it("It should response 200 for 0xc9ddb5e37165827bbbff15b582e232c06862c4e8", async () => {
+    const res = await queryClient(
+      "/0xc9ddb5e37165827bbbff15b582e232c06862c4e8?limit=10",
+    );
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.sites?.[0]?.link).toBe("https://paragraph.com/@blog");
+  });
 });
