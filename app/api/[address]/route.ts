@@ -3,6 +3,7 @@ import {
   handleSearchPlatform,
   isValidEthereumAddress,
   isValidSolanaAddress,
+  regexDomain,
 } from "./utils";
 import getRSSResponse from "./rss";
 import parse from "./parse";
@@ -11,7 +12,7 @@ export const runtime = "edge";
 
 const BASE_URLS = {
   MIRROR: "https://mirror.xyz",
-  PARAGRAPH: "https://paragraph.xyz",
+  PARAGRAPH: "https://paragraph.com",
   PROFILE_API: "https://api.web3.bio",
 };
 
@@ -40,8 +41,10 @@ const fetchArticle = async (address: string, limit: number) => {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ addresses: [address], limit }),
-  }).catch(() => null);
-  return response ? response.json() : [];
+  })
+    .then((res) => res.json())
+    .catch(() => null);
+  return response || [];
 };
 
 const resolveAddressAndDomain = async (address: string, domain: string) => {
@@ -50,7 +53,7 @@ const resolveAddressAndDomain = async (address: string, domain: string) => {
 
   const searchPlatform = domain ? handleSearchPlatform(domain) : "ens";
   const profile = await fetch(
-    `${BASE_URLS.PROFILE_API}/ns/${searchPlatform}/${domain || address}`
+    `${BASE_URLS.PROFILE_API}/ns/${searchPlatform}/${domain || address}`,
   )
     .then((res) => res.json())
     .catch(() => null);
@@ -104,8 +107,8 @@ const processFireflyArticles = (articles: any[], resolvedDomain: string) => {
     } else if (x.platform === 2) {
       if (content.url && !paragraphUser) {
         paragraphUser = content.url.includes("@")
-          ? content.url.match(/paragraph\.xyz\/@([a-zA-Z0-9_-]+)/)[1]
-          : content.url.split("/")[0].split(".")[0];
+          ? content.url.match(/paragraph\.com\/@([a-zA-Z0-9_\.-]+)/)?.[1]
+          : regexDomain.exec(content.url)?.[1];
       }
       items.push({
         title: content.title,
@@ -126,13 +129,13 @@ const processFireflyArticles = (articles: any[], resolvedDomain: string) => {
 const fetchSiteInfo = async (
   resolvedDomain: string,
   paragraphUser: string,
-  items: any[]
+  items: any[],
 ) => {
   const sites = [];
 
   if (items.some((x) => x.platform === ARTICLE_PLATFORMS.MIRROR)) {
     const mirrorSite = await parse(
-      `https://mirror.xyz/${resolvedDomain}/feed/atom`
+      `https://mirror.xyz/${resolvedDomain}/feed/atom`,
     );
     sites.push({
       platform: ARTICLE_PLATFORMS.MIRROR,
@@ -145,7 +148,7 @@ const fetchSiteInfo = async (
 
   if (items.some((x) => x.platform === ARTICLE_PLATFORMS.PARAGRAPH)) {
     const paragraphSite = await parse(
-      `https://paragraph.xyz/api/blogs/rss/@${paragraphUser || resolvedDomain}`
+      `https://api.paragraph.com/blogs/rss/@${paragraphUser || resolvedDomain}`,
     );
     sites.push({
       platform: ARTICLE_PLATFORMS.PARAGRAPH,
@@ -180,11 +183,9 @@ export async function GET(req: NextRequest) {
 
   const { resolvedAddress, resolvedDomain } = await resolveAddressAndDomain(
     address,
-    domain
+    domain,
   );
-
   const result: { sites: any[]; items: any[] } = { sites: [], items: [] };
-
   if (contenthash) {
     const contenthashResult = await processContenthashArticles(resolvedDomain);
     if (contenthashResult?.items?.length > 0)
@@ -196,14 +197,14 @@ export async function GET(req: NextRequest) {
     const fireflyArticles = await fetchArticle(resolvedAddress, limit);
     const { items: fireflyItems, paragraphUser } = processFireflyArticles(
       fireflyArticles?.data,
-      resolvedDomain
+      resolvedDomain,
     );
     result.items.push(...fireflyItems);
 
     const sites = await fetchSiteInfo(
       resolvedDomain,
       paragraphUser,
-      result.items
+      result.items,
     );
 
     result.sites.push(...sites);

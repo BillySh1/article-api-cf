@@ -1,22 +1,23 @@
 import { queryClient } from "../utils/test-utils";
 
 describe("Test For Rss Fetcher ", () => {
-  it("It should response 200 for ENS domain", async () => {
-    const res = await queryClient("/api/rss?query=sujiyan.eth");
-    expect(res.status).toBe(200);
-  });
-  it("It should response 200 for custom domain without https", async () => {
-    const res = await queryClient("/api/rss?query=vitalik.ca");
-    expect(res.status).toBe(200);
-  });
-  it("It should response 200 for custom full domain", async () => {
-    const res = await queryClient("/api/rss?query=https://vitalik.ca");
-    expect(res.status).toBe(200);
-  });
-  it("It should response 200 for .bit domain", async () => {
-    const res = await queryClient("/api/rss?query=planetable.bit&mode=list");
+  // Paragraph
+  it("It should response 200 for 0xf1268b5eae72617ddb2cfcaa82d379155b675dfd", async () => {
+    const res = await queryClient(
+      "/0xf1268b5eae72617ddb2cfcaa82d379155b675dfd?limit=10",
+    );
     expect(res.status).toBe(200);
     const json = await res.json();
-    expect(json.items.length).toBe(10);
+    expect(json.sites?.[0]?.link).toBe(
+      "https://paragraph.com/@pioneering-spirit",
+    );
+  });
+  it("It should response 200 for 0x742b97dc68bcc3475feb734c2df2c76f25664532", async () => {
+    const res = await queryClient(
+      "/0x742b97dc68bcc3475feb734c2df2c76f25664532?limit=10",
+    );
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.sites?.[0]?.link).toBe("https://paragraph.com/@jamesbeck.eth");
   });
 });

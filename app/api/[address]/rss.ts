@@ -8,7 +8,7 @@ const MAX_DESCRIPTION_LENGTH = 140;
 
 const resolveInnerHTML = (
   content: string | undefined,
-  slice?: boolean
+  slice?: boolean,
 ): string => {
   if (typeof content !== "string") return "";
   const he = require("he");
@@ -16,7 +16,7 @@ const resolveInnerHTML = (
     striptags(content)
       .replace(ESCAPE_REGEX, "")
       .trim()
-      .replace(WHITESPACE_REGEX, " ")
+      .replace(WHITESPACE_REGEX, " "),
   );
   return slice ? sliceString(contentStr, MAX_DESCRIPTION_LENGTH) : contentStr;
 };
@@ -36,8 +36,9 @@ const REGEX_DOMAIN =
 const fetchRSSURL = async (url: string): Promise<string | null> => {
   try {
     const fetchURL = `https://public-api.wordpress.com/rest/v1.1/read/feed/?url=${url}`;
-    const res = await fetch(fetchURL).then((response) => response.json());
-    return res.feeds?.[0].subscribe_URL ?? null;
+    const res = await fetch(fetchURL);
+    const response = await res.json();
+    return response?.feeds?.[0]?.subscribe_URL || null;
   } catch (e) {
     console.log("Error occurs when fetching RSS URL:", e);
     return null;
@@ -103,7 +104,9 @@ export default async function getRSS(props: {
   }
 
   const fetchURL = getFetchURL(query);
+
   const rssURL = await fetchRSSURL(fetchURL);
+
   if (!rssURL) return null;
 
   const rssJSON: RSSFeed | null = await parse(rssURL);
@@ -130,7 +133,7 @@ export default async function getRSS(props: {
       newItem.body = (newItem.description || newItem.summary)?.trim();
       newItem.description = resolveInnerHTML(
         newItem.description || newItem.summary,
-        true
+        true,
       );
       delete newItem.summary;
 
