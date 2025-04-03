@@ -13,7 +13,8 @@ export const regexEns = /.*?\.(eth|xyz|app|luxe|kred|art|ceo|club)$/i,
     /.*\.(crypto|888|nft|blockchain|bitcoin|dao|x|klever|hi|zil|kresus|polygon|wallet|binanceus|anime|go|manga|eth)$/i,
   regexSpaceid = /.*\.(bnb|arb)$/i,
   regexCrossbell = /.*\.csb$/i,
-  regexAvatar = /^0x[a-f0-9]{66}$/i;
+  regexAvatar = /^0x[a-f0-9]{66}$/i,
+  regexDomain = /^(?:https?:\/\/)?(?:[^@\/\n]+@)?(?:www\.)?([^:\/\n]+)/;
 
 export const isValidEthereumAddress = (address: string) => {
   if (!isAddress(address)) return false; // invalid Ethereum address
