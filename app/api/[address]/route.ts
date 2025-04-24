@@ -152,18 +152,15 @@ const fetchSiteInfo = async (
     const paragraphSite = await parse(
       `https://api.paragraph.com/blogs/rss/@${paragraphUser || resolvedDomain}`,
     );
-    sites.push({
-      platform: ARTICLE_PLATFORMS.PARAGRAPH,
-      name: paragraphSite?.title || `${resolvedDomain}'s Paragraph`,
-      description:
-        paragraphSite?.description === "undefined"
-          ? ""
-          : paragraphSite?.description || "",
-      image: paragraphSite?.image || "",
-      link:
-        paragraphSite?.link ||
-        `${BASE_URLS.PARAGRAPH}/@${paragraphUser || resolvedDomain}`,
-    });
+    if (paragraphSite) {
+      sites.push({
+        platform: ARTICLE_PLATFORMS.PARAGRAPH,
+        name: paragraphSite?.title || `${resolvedDomain}'s Paragraph`,
+        description: paragraphSite?.description || "",
+        image: paragraphSite?.image || "",
+        link: paragraphSite?.link || `${BASE_URLS.PARAGRAPH}/@${paragraphUser}`,
+      });
+    }
   }
 
   return sites;
@@ -213,6 +210,7 @@ export async function GET(req: NextRequest) {
   }
 
   result.items = result.items
+    .filter((x) => result.sites.some((i) => i.platform === x.platform))
     .sort((a, b) => b.published - a.published)
     .slice(0, limit);
 
