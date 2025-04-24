@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  handleSearchPlatform,
   isValidEthereumAddress,
   isValidSolanaAddress,
   regexDomain,
@@ -47,24 +46,65 @@ const fetchArticle = async (address: string, limit: number) => {
   return response || [];
 };
 
-const resolveAddressAndDomain = async (address: string, domain: string) => {
-  if (address && domain)
-    return { resolvedAddress: address, resolvedDomain: domain };
+const processMirrorRSS = async (ensName: string) => {
+  try {
+    const mirrorRSS = await parse(`https://mirror.xyz/${ensName}/feed/atom`);
+    if (!mirrorRSS) return null;
 
-  const searchPlatform = domain ? handleSearchPlatform(domain) : "ens";
-  const profile = await fetch(
-    `${BASE_URLS.PROFILE_API}/ns/${searchPlatform}/${domain || address}`,
-  )
-    .then((res) => res.json())
-    .catch(() => null);
-
-  return {
-    resolvedAddress: profile?.address || address,
-    resolvedDomain: profile?.identity || domain,
-  };
+    return {
+      site: {
+        platform: ARTICLE_PLATFORMS.MIRROR,
+        name: mirrorRSS.title || `${ensName}'s Mirror`,
+        description: mirrorRSS.description || "",
+        image: mirrorRSS.image || "",
+        link: mirrorRSS.link || `${BASE_URLS.MIRROR}/${ensName}`,
+      },
+      items: (mirrorRSS.items || []).map((item: any) => ({
+        title: item.title,
+        link: item.link,
+        description: item.description,
+        published: new Date(item.published).getTime(),
+        body: item.body || item.content,
+        platform: ARTICLE_PLATFORMS.MIRROR,
+      })),
+    };
+  } catch (error) {
+    console.error("Error processing Mirror RSS:", error);
+    return null;
+  }
 };
 
-const processContenthashArticles = async (resolvedDomain: string) => {
+const processParagraphRSS = async (username: string) => {
+  try {
+    const paragraphRSS = await parse(
+      `https://api.paragraph.com/blogs/rss/@${username}`,
+    );
+    if (!paragraphRSS) return null;
+
+    return {
+      site: {
+        platform: ARTICLE_PLATFORMS.PARAGRAPH,
+        name: paragraphRSS.title || `${username}'s Paragraph`,
+        description: paragraphRSS.description || "",
+        image: paragraphRSS.image || "",
+        link: paragraphRSS.link || `${BASE_URLS.PARAGRAPH}/@${username}`,
+      },
+      items: (paragraphRSS.items || []).map((item: any) => ({
+        title: item.title,
+        link: item.link,
+        description: item.description,
+        published: new Date(item.published).getTime(),
+        body: item.body || item.content,
+        platform: ARTICLE_PLATFORMS.PARAGRAPH,
+      })),
+    };
+  } catch (error) {
+    console.error("Error processing Paragraph RSS:", error);
+    return null;
+  }
+};
+
+const processContenthashResults = async (resolvedDomain: string) => {
   const rssArticles = await fetchRss(resolvedDomain);
   if (!rssArticles?.items) return { items: [], site: null };
 
@@ -87,36 +127,47 @@ const processContenthashArticles = async (resolvedDomain: string) => {
   };
 };
 
-const processFireflyArticles = (articles: any[], resolvedDomain: string) => {
+const extractPlatformInfo = (fireflyArticles: any[]) => {
   const items: any[] = [];
-  let paragraphUser = "";
+  const platforms = {
+    mirror: false,
+    paragraph: false,
+  };
+  let paragraphUsername = "";
 
-  articles?.forEach((x: any) => {
+  fireflyArticles?.forEach((x: any) => {
     const content = JSON.parse(x.content_body);
     const published = x.content_timestamp * 1000;
 
     if (x.platform === 1) {
+      // Mirror
+      platforms.mirror = true;
       items.push({
         title: content.content.title,
-        link: `${BASE_URLS.MIRROR}/${resolvedDomain}/${x.original_id}`,
+        link: `${BASE_URLS.MIRROR}/${x.original_id}`,
         description: subStr(content.content.body),
         published,
         body: content.content.body,
         platform: ARTICLE_PLATFORMS.MIRROR,
       });
     } else if (x.platform === 2) {
-      if (content.url && !paragraphUser) {
-        paragraphUser = content.url.includes("@")
+      // Paragraph
+      platforms.paragraph = true;
+
+      // Extract paragraph username from URL if available
+      if (content.url && !paragraphUsername) {
+        paragraphUsername = content.url.includes("@")
           ? content.url.match(
               /paragraph\.(?:com|xyz)\/@([a-zA-Z0-9_\.-]+)/,
             )?.[1]
           : regexDomain.exec(content.url)?.[1];
       }
+
       items.push({
         title: content.title,
         link: content.url
           ? `https://${content.url}`
-          : `${BASE_URLS.PARAGRAPH}/@${resolvedDomain}/${content.slug}`,
+          : `${BASE_URLS.PARAGRAPH}/@${paragraphUsername}/${content.slug}`,
         description: subStr(content.markdown),
         published,
         body: content.markdown,
@@ -125,45 +176,7 @@ const processFireflyArticles = (articles: any[], resolvedDomain: string) => {
     }
   });
 
-  return { items, paragraphUser };
-};
-
-const fetchSiteInfo = async (
-  resolvedDomain: string,
-  paragraphUser: string,
-  items: any[],
-) => {
-  const sites = [];
-
-  if (items.some((x) => x.platform === ARTICLE_PLATFORMS.MIRROR)) {
-    const mirrorSite = await parse(
-      `https://mirror.xyz/${resolvedDomain}/feed/atom`,
-    );
-    sites.push({
-      platform: ARTICLE_PLATFORMS.MIRROR,
-      name: mirrorSite?.title || `${resolvedDomain}'s Mirror`,
-      description: mirrorSite?.description || "",
-      image: mirrorSite?.image || "",
-      link: mirrorSite?.link || `${BASE_URLS.MIRROR}/${resolvedDomain}`,
-    });
-  }
-
-  if (items.some((x) => x.platform === ARTICLE_PLATFORMS.PARAGRAPH)) {
-    const paragraphSite = await parse(
-      `https://api.paragraph.com/blogs/rss/@${paragraphUser || resolvedDomain}`,
-    );
-    if (paragraphSite) {
-      sites.push({
-        platform: ARTICLE_PLATFORMS.PARAGRAPH,
-        name: paragraphSite?.title || `${resolvedDomain}'s Paragraph`,
-        description: paragraphSite?.description || "",
-        image: paragraphSite?.image || "",
-        link: paragraphSite?.link || `${BASE_URLS.PARAGRAPH}/@${paragraphUser}`,
-      });
-    }
-  }
-
-  return sites;
+  return { items, platforms, paragraphUsername };
 };
 
 export async function GET(req: NextRequest) {
@@ -180,37 +193,58 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ sites: [], items: [] });
   }
 
-  const { resolvedAddress, resolvedDomain } = await resolveAddressAndDomain(
-    address,
-    domain,
-  );
   const result: { sites: any[]; items: any[] } = { sites: [], items: [] };
-  if (contenthash) {
-    const contenthashResult = await processContenthashArticles(resolvedDomain);
-    if (contenthashResult?.items?.length > 0)
+  if (contenthash && domain) {
+    const contenthashResult = await processContenthashResults(domain);
+    if (contenthashResult) {
       result.items.push(...contenthashResult.items);
-    if (contenthashResult.site) result.sites.push(contenthashResult.site);
+      result.sites.push(contenthashResult.site);
+    }
   }
 
-  if (isValidEthereumAddress(resolvedAddress)) {
-    const fireflyArticles = await fetchArticle(resolvedAddress, limit);
-    const { items: fireflyItems, paragraphUser } = processFireflyArticles(
-      fireflyArticles?.data,
-      resolvedDomain,
-    );
-    result.items.push(...fireflyItems);
+  if (isValidEthereumAddress(address)) {
+    const fireflyResponse = await fetchArticle(address, limit);
+    const {
+      items: fireflyItems,
+      platforms,
+      paragraphUsername,
+    } = extractPlatformInfo(fireflyResponse.data);
+    if (platforms.mirror) {
+      const mirrorResults = await processMirrorRSS(domain);
+      if (mirrorResults) {
+        result.sites.push(mirrorResults.site);
+        const mirrorItems = mirrorResults.items.map((item: any) => ({
+          ...item,
+          platform: ARTICLE_PLATFORMS.MIRROR,
+        }));
+        result.items.push(...mirrorItems);
+      }
+    }
 
-    const sites = await fetchSiteInfo(
-      resolvedDomain,
-      paragraphUser,
-      result.items,
-    );
-
-    result.sites.push(...sites);
+    if (platforms.paragraph) {
+      const paragraphUser = paragraphUsername || domain;
+      const paragraphResults = await processParagraphRSS(paragraphUser);
+      if (paragraphResults) {
+        result.sites.push(paragraphResults.site);
+        const paragraphItems = paragraphResults.items.map((item: any) => ({
+          ...item,
+          platform: ARTICLE_PLATFORMS.PARAGRAPH,
+        }));
+        result.items.push(...paragraphItems);
+      }
+    }
+    if (domain) {
+      const mirrorResults = await processMirrorRSS(domain);
+      if (mirrorResults) {
+        result.sites.push(mirrorResults.site);
+        result.items.push(...mirrorResults.items);
+      }
+    }
+  } else {
   }
 
   result.items = result.items
-    .filter((x) => result.sites.some((i) => i.platform === x.platform))
+    // .filter((x) => result.sites.some((i) => i.platform === x.platform))
     .sort((a, b) => b.published - a.published)
     .slice(0, limit);
 
