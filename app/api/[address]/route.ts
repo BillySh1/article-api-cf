@@ -1,9 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  isValidEthereumAddress,
-  isValidSolanaAddress,
-  regexDomain,
-} from "./utils";
+import { isValidEthereumAddress, regexDomain } from "./utils";
 import getRSSResponse from "./rss";
 import parse from "./parse";
 
@@ -28,22 +24,27 @@ const subStr = (str: string) => {
 
 const fetchRss = async (handle: string): Promise<any> => {
   try {
-    return await getRSSResponse({ query: handle, mode: "list", limit: 10 });
+    return getRSSResponse({ query: handle, mode: "list", limit: 10 });
   } catch (e) {
-    console.error("Error fetching RSS:", e);
     return null;
   }
 };
 
 const fetchArticle = async (address: string, limit: number) => {
-  const response = await fetch("https://api.firefly.land/article/v1/article", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ addresses: [address], limit }),
-  })
-    .then((res) => res.json())
-    .catch(() => null);
-  return response || [];
+  try {
+    const response = await fetch(
+      "https://api.firefly.land/article/v1/article",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ addresses: [address], limit }),
+      },
+    );
+    const data = await response.json();
+    return data || { data: [] };
+  } catch (error) {
+    return { data: [] };
+  }
 };
 
 const processMirrorRSS = async (ensName: string) => {
@@ -68,7 +69,6 @@ const processMirrorRSS = async (ensName: string) => {
       })),
     };
   } catch (error) {
-    console.error("Error processing Mirror RSS:", error);
     return null;
   }
 };
@@ -97,38 +97,42 @@ const processParagraphRSS = async (username: string) => {
       })),
     };
   } catch (error) {
-    console.error("Error processing Paragraph RSS:", error);
     return null;
   }
 };
 
-const processContenthashResults = async (resolvedDomain: string) => {
-  const rssArticles = await fetchRss(resolvedDomain);
-  if (!rssArticles?.items) return { items: [], site: null };
+const processContenthashResults = async (ensName: string) => {
+  try {
+    const rssArticles = await fetchRss(ensName);
+    if (!rssArticles?.items) return null;
 
-  return {
-    items: rssArticles.items.map((x: any) => ({
-      title: x.title,
-      link: x.link,
-      description: x.description,
-      published: new Date(x.published).getTime(),
-      body: x.body,
-      platform: ARTICLE_PLATFORMS.CONTENTHASH,
-    })),
-    site: {
-      platform: ARTICLE_PLATFORMS.CONTENTHASH,
-      name: rssArticles.title,
-      description: rssArticles.description,
-      image: rssArticles.image,
-      link: rssArticles.link,
-    },
-  };
+    return {
+      site: {
+        platform: ARTICLE_PLATFORMS.CONTENTHASH,
+        name: rssArticles.title,
+        description: rssArticles.description,
+        image: rssArticles.image,
+        link: rssArticles.link,
+      },
+      items: rssArticles.items.map((x: any) => ({
+        title: x.title,
+        link: x.link,
+        description: x.description,
+        published: new Date(x.published).getTime(),
+        body: x.body,
+        platform: ARTICLE_PLATFORMS.CONTENTHASH,
+      })),
+    };
+  } catch (error) {
+    return null;
+  }
 };
 
 const extractPlatformInfo = (fireflyArticles: any[], ensName: string) => {
   const mirrorItems = new Array();
   const paragraphItems = new Array();
   let paragraphUsername = "";
+
   fireflyArticles?.forEach((x: any) => {
     const content = JSON.parse(x.content_body);
     const published = x.content_timestamp * 1000;
@@ -170,40 +174,98 @@ const extractPlatformInfo = (fireflyArticles: any[], ensName: string) => {
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
-  const address = searchParams.get("address")?.toLowerCase() || "";
+  const address = searchParams.get("address") || "";
   const domain = searchParams.get("domain") || "";
   const contenthash = searchParams.get("contenthash") || "";
   const limit = parseInt(searchParams.get("limit") || "10", 10);
 
-  if (!address || !domain) {
+  if (!address) {
     return NextResponse.json({ sites: [], items: [], error: "Invalid Param" });
   }
 
   const result: { sites: any[]; items: any[] } = { sites: [], items: [] };
-  if (contenthash) {
-    const contenthashResult = await processContenthashResults(domain);
-    if (contenthashResult?.items?.length > 0) {
-      result.items.push(...contenthashResult.items);
-      result.sites.push(contenthashResult.site);
-    }
+
+  // Promises
+  const parallelTasks = {
+    firefly: {},
+    mirror: {},
+    contenthash: {},
+  };
+
+  // 1. Firefly first always
+  if (isValidEthereumAddress(address) && limit) {
+    parallelTasks.firefly = fetchArticle(address.toLowerCase(), limit);
   }
 
-  if (isValidEthereumAddress(address)) {
-    const fireflyResponse = await fetchArticle(address, limit);
+  // 2. always query mirror rss after firefly if domain is provided
+  if (domain) {
+    parallelTasks.mirror = processMirrorRSS(domain);
+  }
+
+  // 3. if contenthash is provided, query contenthash rss
+  if (contenthash && domain) {
+    parallelTasks.contenthash = processContenthashResults(domain);
+  }
+
+  // parallel tasks execution
+  const validTasks = Object.entries(parallelTasks)
+    .filter(
+      ([_, promise]: any) => promise && typeof promise.then === "function",
+    )
+    .map(([key, promise]: any) => promise.then((data: any) => ({ key, data })));
+
+  const taskResults = await Promise.allSettled(validTasks);
+  const resolvedTasks = taskResults.reduce((acc: any, result) => {
+    if (result.status === "fulfilled" && result.value?.data) {
+      acc[result.value.key] = result.value.data;
+    }
+    return acc;
+  }, {});
+
+  // Process ContentHash results if available
+  if (resolvedTasks.contenthash?.items?.length > 0) {
+    result.sites.push(resolvedTasks.contenthash.site);
+    result.items.push(...resolvedTasks.contenthash.items);
+  }
+
+  if (resolvedTasks.firefly) {
     const { mirrorItems, paragraphItems, paragraphUsername } =
-      extractPlatformInfo(fireflyResponse.data, domain);
+      extractPlatformInfo(resolvedTasks.firefly.data || [], domain);
+
+    // resolve mirror
+    if (resolvedTasks.mirror) {
+      result.sites.push(resolvedTasks.mirror.site);
+      result.items.push(
+        ...resolvedTasks.mirror.items.map((item: any) => ({
+          ...item,
+          platform: ARTICLE_PLATFORMS.MIRROR,
+        })),
+      );
+    } else if (mirrorItems.length > 0) {
+      result.sites.push({
+        platform: ARTICLE_PLATFORMS.MIRROR,
+        name: `${domain}'s Mirror`,
+        description: "",
+        image: "",
+        link: `${BASE_URLS.MIRROR}/${domain}`,
+      });
+      result.items.push(...mirrorItems);
+    }
+
     // resolve paragraph
     if (paragraphItems?.length > 0) {
       const paragraphUser = paragraphUsername || domain;
       const paragraphRssJson = await processParagraphRSS(paragraphUser);
+
       if (paragraphRssJson) {
         result.sites.push(paragraphRssJson.site);
-        const paragraphArticles = paragraphRssJson.items.map((item: any) => ({
-          ...item,
-          platform: ARTICLE_PLATFORMS.PARAGRAPH,
-        }));
-        result.items.push(...paragraphArticles);
-      } else {
+        result.items.push(
+          ...paragraphRssJson.items.map((item: any) => ({
+            ...item,
+            platform: ARTICLE_PLATFORMS.PARAGRAPH,
+          })),
+        );
+      } else if (paragraphItems.length > 0) {
         result.sites.push({
           platform: ARTICLE_PLATFORMS.PARAGRAPH,
           name: `${paragraphUser}'s Paragraph`,
@@ -213,26 +275,6 @@ export async function GET(req: NextRequest) {
         });
         result.items.push(...paragraphItems);
       }
-    }
-    // resolve mirror
-    const mirrorResults = await processMirrorRSS(domain);
-    if (mirrorResults) {
-      result.sites.push(mirrorResults.site);
-      const mirrorArticles = mirrorResults.items.map((item: any) => ({
-        ...item,
-        platform: ARTICLE_PLATFORMS.MIRROR,
-      }));
-      result.items.push(...mirrorArticles);
-    }
-    if (mirrorItems) {
-      result.sites.push({
-        platform: ARTICLE_PLATFORMS.MIRROR,
-        name: `${domain}'s Mirror`,
-        description: "",
-        image: "",
-        link: `${BASE_URLS.MIRROR}/${domain}`,
-      });
-      result.items.push(...mirrorItems);
     }
   }
 

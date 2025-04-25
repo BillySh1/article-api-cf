@@ -1,4 +1,7 @@
-import { queryClient } from "../utils/test-utils";
+const baseURL = process.env.NEXT_PUBLIC_VERCEL_RUL || "http://localhost:3000";
+const queryClient = async (path) => {
+  return await fetch(baseURL + path);
+};
 
 describe("Test For Rss Fetcher ", () => {
   // Paragraph
