@@ -50,7 +50,6 @@ const processMirrorRSS = async (ensName: string) => {
   try {
     const mirrorRSS = await parse(`https://mirror.xyz/${ensName}/feed/atom`);
     if (!mirrorRSS) return null;
-
     return {
       site: {
         platform: ARTICLE_PLATFORMS.MIRROR,
@@ -80,7 +79,6 @@ const processParagraphRSS = async (username: string) => {
       `https://api.paragraph.com/blogs/rss/@${username}`,
     );
     if (!paragraphRSS) return null;
-
     return {
       site: {
         platform: ARTICLE_PLATFORMS.PARAGRAPH,
@@ -127,33 +125,24 @@ const processContenthashResults = async (resolvedDomain: string) => {
   };
 };
 
-const extractPlatformInfo = (fireflyArticles: any[]) => {
-  const items: any[] = [];
-  const platforms = {
-    mirror: false,
-    paragraph: false,
-  };
+const extractPlatformInfo = (fireflyArticles: any[], ensName: string) => {
+  const mirrorItems = new Array();
+  const paragraphItems = new Array();
   let paragraphUsername = "";
-
   fireflyArticles?.forEach((x: any) => {
     const content = JSON.parse(x.content_body);
     const published = x.content_timestamp * 1000;
 
     if (x.platform === 1) {
-      // Mirror
-      platforms.mirror = true;
-      items.push({
+      mirrorItems.push({
         title: content.content.title,
-        link: `${BASE_URLS.MIRROR}/${x.original_id}`,
+        link: `${BASE_URLS.MIRROR}/${ensName}/${x.original_id}`,
         description: subStr(content.content.body),
         published,
         body: content.content.body,
         platform: ARTICLE_PLATFORMS.MIRROR,
       });
     } else if (x.platform === 2) {
-      // Paragraph
-      platforms.paragraph = true;
-
       // Extract paragraph username from URL if available
       if (content.url && !paragraphUsername) {
         paragraphUsername = content.url.includes("@")
@@ -163,7 +152,7 @@ const extractPlatformInfo = (fireflyArticles: any[]) => {
           : regexDomain.exec(content.url)?.[1];
       }
 
-      items.push({
+      paragraphItems.push({
         title: content.title,
         link: content.url
           ? `https://${content.url}`
@@ -176,7 +165,7 @@ const extractPlatformInfo = (fireflyArticles: any[]) => {
     }
   });
 
-  return { items, platforms, paragraphUsername };
+  return { paragraphItems, mirrorItems, paragraphUsername };
 };
 
 export async function GET(req: NextRequest) {
@@ -186,17 +175,14 @@ export async function GET(req: NextRequest) {
   const contenthash = searchParams.get("contenthash") || "";
   const limit = parseInt(searchParams.get("limit") || "10", 10);
 
-  if (
-    !(isValidEthereumAddress(address) || isValidSolanaAddress(address)) &&
-    !contenthash
-  ) {
-    return NextResponse.json({ sites: [], items: [] });
+  if (!address || !domain) {
+    return NextResponse.json({ sites: [], items: [], error: "Invalid Param" });
   }
 
   const result: { sites: any[]; items: any[] } = { sites: [], items: [] };
-  if (contenthash && domain) {
+  if (contenthash) {
     const contenthashResult = await processContenthashResults(domain);
-    if (contenthashResult) {
+    if (contenthashResult?.items?.length > 0) {
       result.items.push(...contenthashResult.items);
       result.sites.push(contenthashResult.site);
     }
@@ -204,49 +190,59 @@ export async function GET(req: NextRequest) {
 
   if (isValidEthereumAddress(address)) {
     const fireflyResponse = await fetchArticle(address, limit);
-    const {
-      items: fireflyItems,
-      platforms,
-      paragraphUsername,
-    } = extractPlatformInfo(fireflyResponse.data);
-    if (platforms.mirror) {
-      const mirrorResults = await processMirrorRSS(domain);
-      if (mirrorResults) {
-        result.sites.push(mirrorResults.site);
-        const mirrorItems = mirrorResults.items.map((item: any) => ({
-          ...item,
-          platform: ARTICLE_PLATFORMS.MIRROR,
-        }));
-        result.items.push(...mirrorItems);
-      }
-    }
-
-    if (platforms.paragraph) {
+    const { mirrorItems, paragraphItems, paragraphUsername } =
+      extractPlatformInfo(fireflyResponse.data, domain);
+    // resolve paragraph
+    if (paragraphItems?.length > 0) {
       const paragraphUser = paragraphUsername || domain;
-      const paragraphResults = await processParagraphRSS(paragraphUser);
-      if (paragraphResults) {
-        result.sites.push(paragraphResults.site);
-        const paragraphItems = paragraphResults.items.map((item: any) => ({
+      const paragraphRssJson = await processParagraphRSS(paragraphUser);
+      if (paragraphRssJson) {
+        result.sites.push(paragraphRssJson.site);
+        const paragraphArticles = paragraphRssJson.items.map((item: any) => ({
           ...item,
           platform: ARTICLE_PLATFORMS.PARAGRAPH,
         }));
+        result.items.push(...paragraphArticles);
+      } else {
+        result.sites.push({
+          platform: ARTICLE_PLATFORMS.PARAGRAPH,
+          name: `${paragraphUser}'s Paragraph`,
+          description: "",
+          image: "",
+          link: `${BASE_URLS.PARAGRAPH}/@${paragraphUser}`,
+        });
         result.items.push(...paragraphItems);
       }
     }
-    if (domain) {
-      const mirrorResults = await processMirrorRSS(domain);
-      if (mirrorResults) {
-        result.sites.push(mirrorResults.site);
-        result.items.push(...mirrorResults.items);
-      }
+    // resolve mirror
+    const mirrorResults = await processMirrorRSS(domain);
+    if (mirrorResults) {
+      result.sites.push(mirrorResults.site);
+      const mirrorArticles = mirrorResults.items.map((item: any) => ({
+        ...item,
+        platform: ARTICLE_PLATFORMS.MIRROR,
+      }));
+      result.items.push(...mirrorArticles);
     }
-  } else {
+    if (mirrorItems) {
+      result.sites.push({
+        platform: ARTICLE_PLATFORMS.MIRROR,
+        name: `${domain}'s Mirror`,
+        description: "",
+        image: "",
+        link: `${BASE_URLS.MIRROR}/${domain}`,
+      });
+      result.items.push(...mirrorItems);
+    }
   }
 
   result.items = result.items
-    // .filter((x) => result.sites.some((i) => i.platform === x.platform))
     .sort((a, b) => b.published - a.published)
     .slice(0, limit);
+
+  result.sites = result.sites.filter((x) =>
+    result.items.some((i) => i.platform === x.platform),
+  );
 
   return NextResponse.json(result, {
     status: 200,
