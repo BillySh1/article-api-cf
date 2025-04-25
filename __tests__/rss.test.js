@@ -57,9 +57,7 @@ describe("Test For Rss Fetcher ", () => {
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(
-      json.items.every((x) =>
-        x.link.startsWith("https://mirror.xyz/kairon.eth"),
-      ),
+      json.items.every((x) => x.link.startsWith("https://kairon.mirror.xyz")),
     ).toBeTruthy();
   });
 });
