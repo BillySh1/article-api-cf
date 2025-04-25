@@ -8,7 +8,6 @@ export const runtime = "edge";
 const BASE_URLS = {
   MIRROR: "https://mirror.xyz",
   PARAGRAPH: "https://paragraph.com",
-  PROFILE_API: "https://api.web3.bio",
 };
 
 const ARTICLE_PLATFORMS = {
@@ -231,7 +230,7 @@ export async function GET(req: NextRequest) {
   if (resolvedTasks.firefly) {
     const { mirrorItems, paragraphItems, paragraphUsername } =
       extractPlatformInfo(resolvedTasks.firefly.data || [], domain);
-    // resolve mirror
+    // resolve Mirror
     if (resolvedTasks.mirror) {
       result.sites.push(resolvedTasks.mirror.site);
       result.items.push(
@@ -251,7 +250,7 @@ export async function GET(req: NextRequest) {
       result.items.push(...mirrorItems);
     }
 
-    // resolve paragraph
+    // resolve Paragraph
     if (paragraphItems?.length > 0) {
       const paragraphUser = paragraphUsername || domain;
       const paragraphRssJson = await processParagraphRSS(paragraphUser);
