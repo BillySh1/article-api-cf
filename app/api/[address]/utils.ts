@@ -27,6 +27,37 @@ export const isValidSolanaAddress = (address: string) => {
   return true;
 };
 
+export const handleSearchPlatform = (term: string) => {
+  switch (!!term) {
+    case regexEns.test(term):
+      return "ens";
+    case regexEth.test(term):
+      return "ethereum";
+    case regexLens.test(term):
+      return "lens";
+    case regexUnstoppableDomains.test(term):
+      return "unstoppableDomains";
+    case regexSpaceid.test(term):
+      return "space_id";
+    case regexCrossbell.test(term):
+      return "crossbell";
+    case regexDotbit.test(term):
+      return "dotbit";
+    case regexSns.test(term):
+      return "sns";
+    case regexBtc.test(term):
+      return "bitcoin";
+    case regexSolana.test(term):
+      return "solana";
+    case regexTwitter.test(term):
+      return "twitter";
+    case regexFarcaster.test(term):
+      return "farcaster";
+    default:
+      return "next.id";
+  }
+};
+
 export const isValidURL = (str: string) => {
   try {
     new URL(str);
