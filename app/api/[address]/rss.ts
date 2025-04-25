@@ -40,6 +40,7 @@ const fetchRSSURL = async (url: string): Promise<string | null> => {
     const response = await res.json();
     return response?.feeds?.[0]?.subscribe_URL || null;
   } catch (e) {
+    console.log("Error occurs when fetching RSS URL:", e);
     return null;
   }
 };
