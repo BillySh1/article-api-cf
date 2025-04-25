@@ -160,7 +160,7 @@ const extractPlatformInfo = (fireflyArticles: any[], ensName: string) => {
         title: content.title,
         link: content.url
           ? `https://${content.url}`
-          : `${BASE_URLS.PARAGRAPH}/@${paragraphUsername}/${content.slug}`,
+          : `${BASE_URLS.PARAGRAPH}/@${paragraphUsername || ensName}/${content.slug}`,
         description: subStr(content.markdown),
         published,
         body: content.markdown,
@@ -231,7 +231,6 @@ export async function GET(req: NextRequest) {
   if (resolvedTasks.firefly) {
     const { mirrorItems, paragraphItems, paragraphUsername } =
       extractPlatformInfo(resolvedTasks.firefly.data || [], domain);
-
     // resolve mirror
     if (resolvedTasks.mirror) {
       result.sites.push(resolvedTasks.mirror.site);
