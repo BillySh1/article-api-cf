@@ -1,4 +1,4 @@
-const baseURL = process.env.NEXT_PUBLIC_VERCEL_RUL || "http://localhost:3000";
+const baseURL = process.env.NEXT_PUBLIC_VERCEL_URL || "http://localhost:3000";
 const queryClient = async (path) => {
   return await fetch(baseURL + path);
 };
