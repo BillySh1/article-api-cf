@@ -35,3 +35,14 @@ export const isValidURL = (str: string) => {
     return false;
   }
 };
+
+export const BASE_URLS = {
+  MIRROR: "https://mirror.xyz",
+  PARAGRAPH: "https://paragraph.com",
+};
+
+export const ARTICLE_PLATFORMS = {
+  CONTENTHASH: "website",
+  PARAGRAPH: "paragraph",
+  MIRROR: "mirror",
+};

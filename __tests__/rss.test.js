@@ -40,10 +40,19 @@ describe("Test For Rss Fetcher ", () => {
     const json = await res.json();
     expect(json.sites?.[0].platform).toBe("website");
   });
+
+  it("It should response 200 for 4JBz4tAKgAmxjDPHHi9HRLj14RsCQJyuCkCFKnpz7B9s", async () => {
+    const res = await queryClient(
+      "/4JBz4tAKgAmxjDPHHi9HRLj14RsCQJyuCkCFKnpz7B9s?limit=10&domain=planetable.sol&contenthash=ipns://k51qzi5uqu5dgv8kzl1anc0m74n6t9ffdjnypdh846ct5wgpljc7rulynxa74a",
+    );
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.sites?.[0].platform).toBe("website");
+  });
   // Mirror
   it("It should response 200 for bradgao.eth", async () => {
     const res = await queryClient(
-      "/0xa75e8c75f193ee0079f6c75ca7fcbe79c40c517f?limit=10&domain=bradgao.eth",
+      "/0xa75e8c75f193ee0079f6c75ca7fcbe79c40c517f?limit=10",
     );
     expect(res.status).toBe(200);
     const json = await res.json();
@@ -59,5 +68,14 @@ describe("Test For Rss Fetcher ", () => {
     expect(
       json.items.every((x) => x.link.startsWith("https://kairon.mirror.xyz")),
     ).toBeTruthy();
+  });
+
+  it("It should response 200 for 0x934b510d4c9103e6a87aef13b816fb080286d649", async () => {
+    const res = await queryClient(
+      "/0x934b510d4c9103e6a87aef13b816fb080286d649?limit=10",
+    );
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.sites?.[0].platform).toBe("mirror");
   });
 });
