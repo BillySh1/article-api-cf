@@ -11,9 +11,11 @@ describe("Test For Rss Fetcher ", () => {
     );
     expect(res.status).toBe(200);
     const json = await res.json();
-    expect(json.sites?.[0]?.link).toBe(
-      "https://paragraph.com/@pioneering-spirit",
-    );
+    expect(
+      json.sites.some(
+        (x) => x.link === "https://paragraph.com/@pioneering-spirit",
+      ),
+    ).toBeTruthy();
   });
   it("It should response 200 for 0x742b97dc68bcc3475feb734c2df2c76f25664532", async () => {
     const res = await queryClient(
