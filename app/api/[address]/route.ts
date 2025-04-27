@@ -1,7 +1,11 @@
 import { processMirrorResults } from "@/utils/mirror";
 import { processParagraphResults } from "@/utils/paragraph";
 import { processContenthashResults } from "@/utils/rss";
-import { ARTICLE_PLATFORMS, isValidEthereumAddress } from "@/utils/utils";
+import {
+  ARTICLE_PLATFORMS,
+  isValidEthereumAddress,
+  isValidSolanaAddress,
+} from "@/utils/utils";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
@@ -11,7 +15,7 @@ export async function GET(req: NextRequest) {
   const contenthash = searchParams.get("contenthash") || "";
   const limit = parseInt(searchParams.get("limit") || "10", 10);
 
-  if (!address) {
+  if (!isValidEthereumAddress(address) && !isValidSolanaAddress(address)) {
     return NextResponse.json({ sites: [], items: [], error: "Invalid Param" });
   }
 
