@@ -71,7 +71,10 @@ export const processParagraphResults = async (address: string) => {
       site: {
         platform: ARTICLE_PLATFORMS.PARAGRAPH,
         name: paragraphRSS.title || `${username}'s Paragraph`,
-        description: paragraphRSS.description || "",
+        description:
+          paragraphRSS.description === "undefined"
+            ? ""
+            : paragraphRSS.description || "",
         image: paragraphRSS.image || "",
         link: paragraphRSS.link || `${BASE_URLS.PARAGRAPH}/@${username}`,
       },
