@@ -1,6 +1,7 @@
 import { sliceString } from "@/utils/string";
 import parse from "./parse";
 import striptags from "striptags";
+import { ARTICLE_PLATFORMS } from "./utils";
 
 const ESCAPE_REGEX = /[\\/\b\f\n\r\t\v]/g;
 const WHITESPACE_REGEX = /\s{2,}/g;
@@ -40,7 +41,6 @@ const fetchRSSURL = async (url: string): Promise<string | null> => {
     const response = await res.json();
     return response?.feeds?.[0]?.subscribe_URL || null;
   } catch (e) {
-    console.log("Error occurs when fetching RSS URL:", e);
     return null;
   }
 };
@@ -86,11 +86,11 @@ interface RSSFeed {
   [key: string]: any;
 }
 
-export default async function getRSS(props: {
+const getRSS = async (props: {
   query: string;
   mode?: "list" | "full";
   limit?: number;
-}): Promise<RSSFeed | null> {
+}): Promise<RSSFeed | null> => {
   const { query, mode = "list", limit = 10 } = props;
 
   if (!query) throw new Error(ErrorMessages.EmptyQuery);
@@ -144,4 +144,35 @@ export default async function getRSS(props: {
   };
 
   return responseBody;
-}
+};
+
+export const processContenthashResults = async (ensName: string) => {
+  try {
+    const rssArticles = await getRSS({
+      query: ensName,
+      mode: "list",
+      limit: 10,
+    });
+    if (!rssArticles?.items) return null;
+
+    return {
+      site: {
+        platform: ARTICLE_PLATFORMS.CONTENTHASH,
+        name: rssArticles.title,
+        description: rssArticles.description,
+        image: rssArticles.image,
+        link: rssArticles.link,
+      },
+      items: rssArticles.items.map((x: any) => ({
+        title: x.title,
+        link: x.link,
+        description: x.description,
+        published: new Date(x.published).getTime(),
+        body: x.body,
+        platform: ARTICLE_PLATFORMS.CONTENTHASH,
+      })),
+    };
+  } catch (error) {
+    return null;
+  }
+};
