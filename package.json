@@ -7,9 +7,13 @@
     "build": "next build",
     "test": "jest",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "pages:build": "npx @cloudflare/next-on-pages",
+    "preview": "npm run pages:build && wrangler pages dev",
+    "deploy": "npm run pages:build && wrangler pages deploy"
   },
   "dependencies": {
+    "@cloudflare/next-on-pages": "1.13.12",
     "fast-xml-parser": "^4.4.1",
     "he": "^1.2.0",
     "next": "^14.2.28",
