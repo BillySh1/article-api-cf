@@ -2,6 +2,7 @@
   "name": "article-api",
   "version": "0.2.1",
   "private": true,
+  "type": "commonjs",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -9,8 +10,8 @@
     "start": "next start",
     "lint": "next lint",
     "pages:build": "npx @cloudflare/next-on-pages",
-    "preview": "npm run pages:build && wrangler pages dev",
-    "deploy": "npm run pages:build && wrangler pages deploy"
+    "preview": "pnpm run build && npx wrangler pages dev .vercel/output/static",
+    "deploy": "pnpm run build && npx wrangler deploy"
   },
   "dependencies": {
     "@cloudflare/next-on-pages": "1.13.12",
@@ -31,6 +32,7 @@
     "eslint-config-next": "^14.2.28",
     "jest": "^29.7.0",
     "react-dom": "^18.3.1",
-    "striptags": "^3.2.0"
+    "striptags": "^3.2.0",
+    "wrangler": "^3.0.0"
   }
 }
